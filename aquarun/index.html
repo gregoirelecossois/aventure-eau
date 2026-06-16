@@ -92,7 +92,7 @@
     <canvas id="game" width="800" height="400"></canvas>
   </div>
   <div class="hint">ESPACE, clic ou tap pour passer de la <b>surface</b> au <b>fond</b><br>
-    🏭 À <b>4000 points</b>, tu entres dans le <b>Stage 2 — rivière polluée</b> (plus de polluants, moins de nettoyants). Si tu y coules, tu repars au Stage 1.</div>
+    🏭 À <b>4000 points</b> : <b>Stage 2 — rivière polluée</b>, bien plus dure (plus de polluants, peu de nettoyants, ça accélère). Si tu coules, c'est game over et tu rejoues depuis le Stage 1.</div>
 
   <div class="legend">
     <div class="legbox bad">
@@ -246,9 +246,9 @@ function spawn(){
   spawnOne();
   // densité croissante : aux niveaux élevés, un 2e (voire 3e) polluant en renfort
   if(stage===2){
-    // rivière polluée : renforts bien plus fréquents
-    if(Math.random()<0.55) spawnOne(true, 60+Math.random()*60);
-    if(Math.random()<0.32) spawnOne(true, 140+Math.random()*70);
+    // rivière polluée : un renfort occasionnel (on espace un peu les polluants,
+    // la difficulté vient surtout de la rareté des nettoyants et de la vitesse)
+    if(Math.random()<0.32) spawnOne(true, 95+Math.random()*75);
   }else{
     if(level>=2 && Math.random()<0.22+level*0.09) spawnOne(true, 70+Math.random()*60);
     if(level>=4 && Math.random()<0.40)            spawnOne(true, 150+Math.random()*70);
@@ -359,8 +359,8 @@ function update(dt){
   // vitesse SELON LE NIVEAU : accélère par paliers + légère montée continue
   const LEVEL_SPEED={1:2.7, 2:3.6, 3:4.6, 4:5.6};
   let baseSpeed=(LEVEL_SPEED[level]||2.7)+Math.floor(distance/1400)*0.1;
-  if(stage===2) baseSpeed*=1.18;                // la rivière polluée défile plus vite
-  baseSpeed=Math.min(baseSpeed, stage===2?7.2:6.2);   // plafond (reste jouable)
+  if(stage===2) baseSpeed*=1.22;                // la rivière polluée défile nettement plus vite
+  baseSpeed=Math.min(baseSpeed, stage===2?7.4:6.2);   // plafond (reste jouable)
   speed=baseSpeed;
   if(now<slowUntil) speed*=0.55;   // BONUS plante 🌿 : ralentit = avantage
   if(now<fastUntil) speed*=1.55;   // MALUS nitrate ☠️ : accélère = handicap
@@ -379,7 +379,7 @@ function update(dt){
   if(spawnTimer<=0){
     spawn();
     let minF=level>=3?34:48, maxF=level>=3?62:84;
-    if(stage===2){ minF=26; maxF=48; }   // apparitions plus rapprochées en rivière polluée
+    if(stage===2){ minF=40; maxF=68; }   // un peu plus espacé qu'avant (mais bonus rares + vitesse = très dur)
     spawnTimer=minF+Math.random()*(maxF-minF);
   }
 
@@ -421,21 +421,11 @@ function update(dt){
 
   if(flashLife>0)flashLife-=dt;
 
-  // pollution maximale
+  // pollution maximale -> GAME OVER (Stage 1 comme Stage 2).
+  // Il n'y a pas de retour direct Stage 2 -> Stage 1 : on rejoue depuis le Stage 1.
   if(pollution>=100){
-    if(stage===2){
-      // échec en Stage 2 -> retour au Stage 1 (pas de game over), le score est conservé
-      stage=1;
-      pollution=45;                          // on repart dans une eau dégradée mais jouable
-      nextStage2At=currentScore()+4000;      // il faut regagner 4000 pts pour revenir au Stage 2
-      setStageMsg("⚠️ Submergé ! Retour au Stage 1");
-      setFlash("#ff3b3b");
-      burst(PLAYER_X,player.y,"#8B4513",18);
-      items=items.filter(it=>it.x>W*0.62);   // on dégage un peu l'écran pour souffler
-    }else{
-      state="over";
-      saveAquaScore(currentScore(), reachedStage2);   // enregistre le score pour le suivi prof
-    }
+    state="over";
+    saveAquaScore(currentScore(), reachedStage2);   // enregistre le score pour le suivi prof
   }
 }
 

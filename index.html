@@ -256,6 +256,16 @@ img{max-width:100%;}
 .sortchip{background:#fff;color:var(--ink);border-radius:12px;padding:8px 10px;margin:6px 0;font-size:.95rem;
   box-shadow:0 3px 8px rgba(0,0,0,.15);cursor:pointer;}
 .sortchip.sel{outline:4px solid var(--gold);}
+/* éclatement de bulle (marais des pollueurs) */
+.bubble-pop-piece{position:absolute;width:11px;height:11px;border-radius:50%;
+  background:radial-gradient(circle at 35% 32%,#fff,#9fd3ff);
+  box-shadow:0 0 7px rgba(255,255,255,.75);pointer-events:none;
+  transform:translate(-50%,-50%);animation:bubblePiece .5s ease-out forwards;}
+@keyframes bubblePiece{
+  0%{opacity:1;transform:translate(-50%,-50%) scale(.5);}
+  70%{opacity:1;}
+  100%{opacity:0;transform:translate(calc(-50% + var(--dx)),calc(-50% + var(--dy))) scale(1);}
+}
 
 /* boss */
 .bossstage{text-align:center;}
@@ -814,6 +824,31 @@ let toastTimer=null;
 function showToast(msg,kind=""){toast.className="toast show "+kind;toast.textContent=msg;clearTimeout(toastTimer);toastTimer=setTimeout(()=>toast.className="toast",1800);}
 function el(html){const d=document.createElement("div");d.innerHTML=html.trim();return d.firstChild;}
 function confetti(){const colors=["#FFC107","#FF6B6B","#4FC3F7","#26A69A","#8E24AA","#43A047"];for(let i=0;i<90;i++){const c=document.createElement("div");c.className="confetti";c.style.left=Math.random()*100+"vw";c.style.background=colors[i%colors.length];c.style.animationDuration=(2+Math.random()*2)+"s";c.style.animationDelay=Math.random()*0.6+"s";document.body.appendChild(c);setTimeout(()=>c.remove(),4600);}}
+/* Éclatement d'une bulle (marais des pollueurs) : la bulle gonfle puis explose
+   en projetant des gouttelettes, au lieu de simplement disparaître. */
+function popBubble(container, bub){
+  if(!bub) return;
+  const br=bub.getBoundingClientRect(), ar=container.getBoundingClientRect();
+  const cx=br.left-ar.left+br.width/2, cy=br.top-ar.top+br.height/2;
+  const N=9;
+  for(let i=0;i<N;i++){
+    const ang=(Math.PI*2*i)/N + Math.random()*0.5;
+    const dist=28+Math.random()*30;
+    const piece=document.createElement("div");
+    piece.className="bubble-pop-piece";
+    piece.style.left=cx+"px"; piece.style.top=cy+"px";
+    piece.style.setProperty("--dx",(Math.cos(ang)*dist).toFixed(1)+"px");
+    piece.style.setProperty("--dy",(Math.sin(ang)*dist).toFixed(1)+"px");
+    container.appendChild(piece);
+    setTimeout(()=>piece.remove(),520);
+  }
+  // la bulle gonfle (squash) puis éclate
+  bub.animate([
+    {transform:"translateX(-50%) scale(1)",   opacity:1, offset:0},
+    {transform:"translateX(-50%) scale(1.35)",opacity:1, offset:0.35},
+    {transform:"translateX(-50%) scale(.1)",  opacity:0, offset:1}
+  ],{duration:360,easing:"ease-out",fill:"forwards"});
+}
 
 /* mascotte goutte d'eau */
 function droplet(size=54){return `<svg viewBox="0 0 100 120" width="${size}"><path d="M50 4 C50 4 90 56 90 82 a40 40 0 1 1 -80 0 C10 56 50 4 50 4Z" fill="#4FC3F7" stroke="#1565C0" stroke-width="4"/><ellipse cx="38" cy="62" rx="9" ry="11" fill="#fff"/><ellipse cx="62" cy="62" rx="9" ry="11" fill="#fff"/><circle cx="40" cy="64" r="4.5" fill="#143642"/><circle cx="64" cy="64" r="4.5" fill="#143642"/><path d="M40 86 q10 10 22 0" stroke="#143642" stroke-width="4" fill="none" stroke-linecap="round"/><ellipse cx="28" cy="80" rx="6" ry="4" fill="#FF9E9E" opacity=".7"/><ellipse cx="72" cy="80" rx="6" ry="4" fill="#FF9E9E" opacity=".7"/></svg>`;}
@@ -1293,7 +1328,7 @@ function gamePollution(mount,st){
     if(idx>=sources.length)return;
     const good=sources[idx].c===b.dataset.c;
     const bub=ba.querySelector(".pollbubble");
-    if(bub){bub.animate([{transform:"translateX(-50%) scale(1)",opacity:1},{transform:"translateX(-50%) scale(0)",opacity:0}],{duration:300,fill:"forwards"});}
+    popBubble(ba, bub);   // effet d'éclatement (gouttelettes) au lieu d'une disparition
     if(good){
       correct++;showToast("✅ Bien vu !","good");
       idx++; setTimeout(spawn,500);
