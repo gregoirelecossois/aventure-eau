@@ -256,6 +256,16 @@ img{max-width:100%;}
 .sortchip{background:#fff;color:var(--ink);border-radius:12px;padding:8px 10px;margin:6px 0;font-size:.95rem;
   box-shadow:0 3px 8px rgba(0,0,0,.15);cursor:pointer;}
 .sortchip.sel{outline:4px solid var(--gold);}
+/* éclatement de bulle (marais des pollueurs) */
+.bubble-pop-piece{position:absolute;width:11px;height:11px;border-radius:50%;
+  background:radial-gradient(circle at 35% 32%,#fff,#9fd3ff);
+  box-shadow:0 0 7px rgba(255,255,255,.75);pointer-events:none;
+  transform:translate(-50%,-50%);animation:bubblePiece .5s ease-out forwards;}
+@keyframes bubblePiece{
+  0%{opacity:1;transform:translate(-50%,-50%) scale(.5);}
+  70%{opacity:1;}
+  100%{opacity:0;transform:translate(calc(-50% + var(--dx)),calc(-50% + var(--dy))) scale(1);}
+}
 
 /* boss */
 .bossstage{text-align:center;}
@@ -379,6 +389,52 @@ img{max-width:100%;}
 .unlock-close{background:none;border:none;color:#7a8a96;text-decoration:underline;
   font-family:inherit;font-size:1rem;cursor:pointer;margin-top:12px;}
 @media(max-width:600px){ .unlock-card h2{font-size:1.35rem;} .unlock-card .btn.big{font-size:1.4rem;} }
+
+/* ===== Joker d'erreur (coin de l'écran) + popups de correction ===== */
+.errtracker{
+  position:fixed;left:14px;bottom:16px;z-index:56;
+  display:flex;align-items:center;gap:9px;
+  background:var(--paper);border:3px solid var(--green);border-radius:16px;
+  padding:8px 13px;box-shadow:0 8px 20px rgba(0,40,80,.3);
+  font-weight:bold;color:var(--ink);max-width:48vw;
+  animation:fadeIn .3s ease;
+}
+.errtracker .et-ico{font-size:1.7rem;line-height:1;flex:0 0 auto;}
+.errtracker .et-txt{font-size:.9rem;line-height:1.15;}
+.errtracker .et-txt b{color:var(--green);}
+.errtracker.used{border-color:var(--coral);animation:trackerPulse .5s;}
+.errtracker.used .et-txt b{color:var(--coral);}
+@keyframes trackerPulse{0%{transform:scale(1);}40%{transform:scale(1.18);}100%{transform:scale(1);}}
+
+.errpop-overlay{
+  position:fixed;inset:0;z-index:170;display:flex;align-items:center;justify-content:center;
+  padding:18px;background:rgba(8,30,48,.78);backdrop-filter:blur(2px);-webkit-backdrop-filter:blur(2px);
+  animation:fadeIn .25s ease;
+}
+.errpop{
+  background:var(--paper);border-radius:26px;border:6px solid #fff;
+  box-shadow:0 24px 60px rgba(0,0,0,.55);
+  width:min(620px,94vw);max-height:92vh;overflow:auto;text-align:center;
+  padding:30px 30px 26px;transform:scale(.7);opacity:0;
+  animation:errpopIn .4s cubic-bezier(.2,1.5,.4,1) forwards;
+}
+@keyframes errpopIn{to{transform:scale(1);opacity:1;}}
+.errpop .ep-ico{font-size:clamp(56px,16vw,84px);line-height:1;}
+.errpop h3{font-size:clamp(1.4rem,5vw,1.9rem);margin:6px 0 4px;color:#C62828;}
+.errpop.block h3{color:#B71C1C;}
+.errpop .ep-body{font-size:1.25rem;line-height:1.5;color:var(--ink);
+  background:#FFF3F3;border:3px solid #FFCDD2;border-radius:18px;padding:16px 18px;margin:14px 0;}
+.errpop .ep-note{font-size:1.02rem;color:#7a4a00;background:#FFF3DC;border-radius:14px;padding:10px 14px;margin-bottom:6px;}
+.errpop .ep-note.danger{color:#8a1f1f;background:#FFE0E0;}
+.errpop .btn.big{font-size:1.4rem;padding:.7em 1.6em;margin-top:10px;}
+@media(max-width:600px){
+  .errpop{padding:22px 18px;}
+  .errpop .ep-body{font-size:1.08rem;padding:13px;}
+  .errpop .btn.big{font-size:1.2rem;}
+  .errtracker{left:10px;bottom:12px;padding:7px 11px;}
+  .errtracker .et-txt{font-size:.78rem;}
+  .errtracker .et-ico{font-size:1.4rem;}
+}
 
 @media print{
   body{background:#fff;}
@@ -707,6 +763,8 @@ const Store = (()=>{ let mem={},ok=false;
 const safeKey = n => (n||"").toLowerCase().normalize("NFD").replace(/[\u0300-\u036f]/g,"").replace(/[^a-z0-9]/g,"_").slice(0,40) || "anon";
 const localKey = n => `eauquest_${CONFIG.sessionCode}_s_${safeKey(n)}`;
 const regKey   = ()=> `eauquest_${CONFIG.sessionCode}_reg`;
+const curKey   = ()=> `eauquest_${CONFIG.sessionCode}_current`;   // élève courant (passé à AquaRun)
+const aquaPendKey = ()=> `eauquest_${CONFIG.sessionCode}_aquapend`; // scores AquaRun à resynchroniser
 
 /* ============================================================
    SYNCHRONISATION (local par défaut, Firebase si configuré)
@@ -752,7 +810,7 @@ const Sync = {
 let student=null;
 function newStudent(name){
   return { name:name.trim(), nameKey:safeKey(name), startedAt:Date.now(), lastActive:Date.now(),
-           current:0, stages:{}, badges:[] };
+           current:0, stages:{}, badges:[], aqua:{best:0, stage2:false, plays:0, lastPlayed:0} };
 }
 function totalPct(s){ let sum=0; STAGES.forEach(st=>{ sum += (s.stages?.[st.id]?.best||0); }); return Math.round(sum/STAGES.length); }
 function persist(){ if(!student)return; student.lastActive=Date.now(); Sync.save(student); }
@@ -766,6 +824,31 @@ let toastTimer=null;
 function showToast(msg,kind=""){toast.className="toast show "+kind;toast.textContent=msg;clearTimeout(toastTimer);toastTimer=setTimeout(()=>toast.className="toast",1800);}
 function el(html){const d=document.createElement("div");d.innerHTML=html.trim();return d.firstChild;}
 function confetti(){const colors=["#FFC107","#FF6B6B","#4FC3F7","#26A69A","#8E24AA","#43A047"];for(let i=0;i<90;i++){const c=document.createElement("div");c.className="confetti";c.style.left=Math.random()*100+"vw";c.style.background=colors[i%colors.length];c.style.animationDuration=(2+Math.random()*2)+"s";c.style.animationDelay=Math.random()*0.6+"s";document.body.appendChild(c);setTimeout(()=>c.remove(),4600);}}
+/* Éclatement d'une bulle (marais des pollueurs) : la bulle gonfle puis explose
+   en projetant des gouttelettes, au lieu de simplement disparaître. */
+function popBubble(container, bub){
+  if(!bub) return;
+  const br=bub.getBoundingClientRect(), ar=container.getBoundingClientRect();
+  const cx=br.left-ar.left+br.width/2, cy=br.top-ar.top+br.height/2;
+  const N=9;
+  for(let i=0;i<N;i++){
+    const ang=(Math.PI*2*i)/N + Math.random()*0.5;
+    const dist=28+Math.random()*30;
+    const piece=document.createElement("div");
+    piece.className="bubble-pop-piece";
+    piece.style.left=cx+"px"; piece.style.top=cy+"px";
+    piece.style.setProperty("--dx",(Math.cos(ang)*dist).toFixed(1)+"px");
+    piece.style.setProperty("--dy",(Math.sin(ang)*dist).toFixed(1)+"px");
+    container.appendChild(piece);
+    setTimeout(()=>piece.remove(),520);
+  }
+  // la bulle gonfle (squash) puis éclate
+  bub.animate([
+    {transform:"translateX(-50%) scale(1)",   opacity:1, offset:0},
+    {transform:"translateX(-50%) scale(1.35)",opacity:1, offset:0.35},
+    {transform:"translateX(-50%) scale(.1)",  opacity:0, offset:1}
+  ],{duration:360,easing:"ease-out",fill:"forwards"});
+}
 
 /* mascotte goutte d'eau */
 function droplet(size=54){return `<svg viewBox="0 0 100 120" width="${size}"><path d="M50 4 C50 4 90 56 90 82 a40 40 0 1 1 -80 0 C10 56 50 4 50 4Z" fill="#4FC3F7" stroke="#1565C0" stroke-width="4"/><ellipse cx="38" cy="62" rx="9" ry="11" fill="#fff"/><ellipse cx="62" cy="62" rx="9" ry="11" fill="#fff"/><circle cx="40" cy="64" r="4.5" fill="#143642"/><circle cx="64" cy="64" r="4.5" fill="#143642"/><path d="M40 86 q10 10 22 0" stroke="#143642" stroke-width="4" fill="none" stroke-linecap="round"/><ellipse cx="28" cy="80" rx="6" ry="4" fill="#FF9E9E" opacity=".7"/><ellipse cx="72" cy="80" rx="6" ry="4" fill="#FF9E9E" opacity=".7"/></svg>`;}
@@ -788,6 +871,7 @@ function escapeHtml(s){return (s||"").replace(/[&<>"']/g,c=>({"&":"&amp;","<":"&
    SCÈNE : ACCUEIL
    ============================================================ */
 function renderWelcome(){
+  clearErrorUI();
   let reg=[];try{reg=JSON.parse(Store.get(regKey())||"[]");}catch(e){}
   const resume = reg.length? `<div class="mt"><div style="color:#EAF6FF;margin-bottom:6px;">Tu as déjà commencé ? Clique sur ton prénom :</div>
     <div class="resume-list">${reg.map(n=>`<button class="pill" onclick="resumeStudent('${escapeHtml(n).replace(/'/g,"\\'")}')">${escapeHtml(n)}</button>`).join("")}</div></div>`:"";
@@ -828,6 +912,7 @@ function stageState(i){
   return "locked";
 }
 function renderMap(){
+  clearErrorUI();
   // chemin reliant les îles dans l'ordre
   const pts=STAGES.map(s=>`${s.x*8.6},${s.y*4.0}`);
   let d=`M ${pts[0]}`; for(let i=1;i<pts.length;i++){d+=` L ${pts[i]}`;}
@@ -892,12 +977,88 @@ function showAquaUnlock(){
 }
 
 /* ============================================================
+   SUIVI D'ERREUR — uniquement exercices 1 (Tri) et 5 (Pollueurs)
+   1 erreur tolérée sur ces deux exercices :
+   • 1ʳᵉ erreur  -> grosse popup de correction, à FERMER manuellement.
+   • 2ᵉ erreur   -> popup bloquante, bouton « Réessayer » obligatoire.
+   Les autres exercices (Memory, Usine, Château) et le boss gardent
+   leur fonctionnement d'origine (zéro erreur tolérée / 100 % requis).
+   ============================================================ */
+const ERR_BUDGET = 1; // erreurs tolérées sur les exercices concernés
+// Seuls le Tri (sort) et les Pollueurs (pollution) ont le « joker erreur ».
+function hasErrorJoker(st){ return !!st && (st.type==="sort" || st.type==="pollution"); }
+
+function clearErrorUI(){
+  document.querySelectorAll(".errtracker,.errpop-overlay").forEach(e=>e.remove());
+}
+function mountErrorTracker(){
+  document.querySelectorAll(".errtracker").forEach(e=>e.remove());
+  const t=el(`<div class="errtracker" id="errTracker">
+      <span class="et-ico">❤️</span>
+      <span class="et-txt">Joker erreur<br><b>1 rattrapage</b></span>
+    </div>`);
+  document.body.appendChild(t);
+}
+function updateErrorTracker(){
+  const t=document.getElementById("errTracker"); if(!t)return;
+  const left=Math.max(0,ERR_BUDGET-(cur.errors||0));
+  if(left>0){
+    t.classList.remove("used");
+    t.querySelector(".et-ico").textContent="❤️";
+    t.querySelector(".et-txt").innerHTML=`Joker erreur<br><b>${left} rattrapage</b>`;
+  }else{
+    t.classList.add("used");
+    t.querySelector(".et-ico").textContent="💔";
+    t.querySelector(".et-txt").innerHTML=`Plus de joker&nbsp;!<br><b>Sois prudent</b>`;
+  }
+}
+
+/* Enregistre une erreur et affiche la popup adaptée.
+   Renvoie une Promise résolue quand le joueur ferme la 1ʳᵉ popup ;
+   en cas de 2ᵉ erreur la popup est bloquante et relance l'exercice
+   (la Promise ne se résout pas, le code suivant n'est donc pas exécuté). */
+function registerError(correctionHtml){
+  if(!hasErrorJoker(cur.stage)) return Promise.resolve();
+  cur.errors=(cur.errors||0)+1;
+  updateErrorTracker();
+  const blocking = cur.errors>ERR_BUDGET; // 2ᵉ erreur -> bloquant
+  return new Promise(resolve=>{ showErrorPopup(correctionHtml, blocking, resolve); });
+}
+
+function showErrorPopup(correctionHtml, blocking, onClose){
+  document.querySelectorAll(".errpop-overlay").forEach(e=>e.remove());
+  const note = blocking
+    ? `<div class="ep-note danger">2ᵉ erreur sur cet exercice. Tu dois recommencer depuis le début pour gagner ta médaille.</div>`
+    : `<div class="ep-note">⚠️ Il te reste <b>0 joker</b>&nbsp;: à la prochaine erreur, il faudra recommencer l'exercice.</div>`;
+  const action = blocking
+    ? `<button class="btn big coral" id="epRetry">🔁 Réessayer l'exercice</button>`
+    : `<button class="btn big" id="epClose">👍 J'ai compris, je continue</button>`;
+  const ov=el(`<div class="errpop-overlay">
+      <div class="errpop ${blocking?'block':''}" role="alertdialog" aria-modal="true">
+        <div class="ep-ico">${blocking?'🚫':'❌'}</div>
+        <h3>${blocking?'Oups, 2ᵉ erreur&nbsp;!':'Petite erreur…'}</h3>
+        <div class="ep-body">${correctionHtml}</div>
+        ${note}
+        ${action}
+      </div>
+    </div>`);
+  document.body.appendChild(ov);
+  // Le clic sur le fond ne ferme rien : on oblige à lire puis à cliquer le bouton.
+  if(blocking){
+    ov.querySelector("#epRetry").onclick=()=>{ ov.remove(); renderGame(cur.index); };
+  }else{
+    ov.querySelector("#epClose").onclick=()=>{ ov.remove(); onClose&&onClose(); };
+  }
+}
+
+/* ============================================================
    SCÈNE DE JEU — aiguillage
    ============================================================ */
 let cur={};
 function renderGame(i){
+  clearErrorUI();
   const st=STAGES[i];
-  cur={index:i, stage:st};
+  cur={index:i, stage:st, errors:0};
   app.innerHTML = hud() + `
     <div class="gamehead noprint">
       <div class="ic" style="background:${st.accent};color:#fff">${st.emoji}</div>
@@ -906,6 +1067,7 @@ function renderGame(i){
     </div>
     <div class="panel"><div id="game" class="gamearea"></div></div>`;
   const mount=document.getElementById("game");
+  if(hasErrorJoker(st)) mountErrorTracker();   // joker d'erreur : Tri + Pollueurs uniquement
   ({sort:gameSort,memory:gameMemory,order:gameOrder,cloze:gameCloze,pollution:gamePollution,boss:gameBoss}[st.type])(mount,st);
 }
 
@@ -914,7 +1076,7 @@ function instrBox(txt){return `<div class="instr"><span class="mas">${droplet(48
 /* ---------- JEU 1 : TRI DES GOUTTES ---------- */
 function gameSort(mount,st){
   const items=shuffle(DATA.tri.slice());
-  let idx=0, correct=0;
+  let idx=0, correct=0, busy=false;
   mount.innerHTML = instrBox("Lis attentivement chaque description. À toi de juger : <b>propre</b> ou <b>potable</b> ? Classe-la dans le bon panier.") + `
     <div class="cardflow">
       <div class="flowmeter"><i id="fm"></i></div>
@@ -926,11 +1088,17 @@ function gameSort(mount,st){
     </div>`;
   const fc=mount.querySelector("#fc"), fm=mount.querySelector("#fm");
   function show(){ if(idx>=items.length){return finish();} fc.textContent=items[idx].t; fm.style.width=(idx/items.length*100)+"%"; }
-  function answer(choice){
+  async function answer(choice){
+    if(busy)return; busy=true;
     const good=items[idx].a===choice;
-    if(good){correct++;showToast("✅ Bravo !","good");fc.style.borderColor="#43A047";}
-    else{showToast(items[idx].a==="propre"?"❌ C'était EAU PROPRE":"❌ C'était EAU POTABLE","bad");fc.style.borderColor="#E53935";}
-    setTimeout(()=>{fc.style.borderColor="#DCEBF7";idx++;show();},700);
+    if(good){
+      correct++;showToast("✅ Bravo !","good");fc.style.borderColor="#43A047";
+      setTimeout(()=>{fc.style.borderColor="#DCEBF7";idx++;show();busy=false;},700);
+    }else{
+      fc.style.borderColor="#E53935";
+      await registerError(`« <b>${escapeHtml(items[idx].t)}</b> »<br>➡️ C'était&nbsp;: <b>${items[idx].a==="propre"?"🪣 EAU PROPRE":"🚰 EAU POTABLE"}</b>`);
+      fc.style.borderColor="#DCEBF7";idx++;show();busy=false;
+    }
   }
   mount.querySelector("#bP").onclick=()=>answer("propre");
   mount.querySelector("#bO").onclick=()=>answer("potable");
@@ -1156,14 +1324,18 @@ function gamePollution(mount,st){
     // animation montée
     bub.animate([{bottom:"-90px"},{bottom:"120px"}],{duration:1400,fill:"forwards",easing:"ease-out"});
   }
-  cb.querySelectorAll(".catbtn").forEach(b=>b.onclick=()=>{
+  cb.querySelectorAll(".catbtn").forEach(b=>b.onclick=async ()=>{
     if(idx>=sources.length)return;
     const good=sources[idx].c===b.dataset.c;
-    if(good){correct++;showToast("✅ Bien vu !","good");}
-    else{showToast("❌ C'était : "+CAT_LABELS[sources[idx].c],"bad");}
     const bub=ba.querySelector(".pollbubble");
-    if(bub){bub.animate([{transform:"translateX(-50%) scale(1)",opacity:1},{transform:"translateX(-50%) scale(0)",opacity:0}],{duration:300,fill:"forwards"});}
-    idx++; setTimeout(spawn,500);
+    popBubble(ba, bub);   // effet d'éclatement (gouttelettes) au lieu d'une disparition
+    if(good){
+      correct++;showToast("✅ Bien vu !","good");
+      idx++; setTimeout(spawn,500);
+    }else{
+      await registerError(`Mauvaise origine pour «&nbsp;<b>${escapeHtml(sources[idx].t)}</b>&nbsp;».<br>➡️ C'était&nbsp;: <b>${CAT_LABELS[sources[idx].c]}</b>`);
+      idx++; spawn();
+    }
   });
   // ronde 2 : conséquences
   function round2(){
@@ -1179,12 +1351,16 @@ function gamePollution(mount,st){
     const chips=mount.querySelector("#chips");
     cons.forEach((c,i)=>{const chip=el(`<div class="sortchip" data-i="${i}">${c.t}</div>`);chip.onclick=()=>{chips.querySelectorAll(".sortchip").forEach(x=>x.classList.remove("sel"));chip.classList.add("sel");sel={chip,c};};chips.appendChild(chip);});
     mount.querySelectorAll(".sortcol").forEach(col=>{
-      col.onclick=()=>{ if(!sel)return; const want=col.querySelector("[data-col]").dataset.col;
+      col.onclick=async ()=>{ if(!sel)return; const want=col.querySelector("[data-col]").dataset.col;
         const good=sel.c.c===want;
-        if(good){col.querySelector("[data-col]").appendChild(sel.chip);sel.chip.classList.remove("sel");sel.chip.onclick=null;sel.chip.style.cursor="default";c2++;placed++;showToast("✅","good");}
-        else{showToast("❌ Pas la bonne colonne","bad");sel.chip.classList.remove("sel");}
-        sel=null;
-        if(placed===cons.length){const tot=sources.length+cons.length;const cc=correct+c2;setTimeout(()=>finishStage(Math.round(cc/tot*100),cc,tot),500);}
+        if(good){
+          col.querySelector("[data-col]").appendChild(sel.chip);sel.chip.classList.remove("sel");sel.chip.onclick=null;sel.chip.style.cursor="default";c2++;placed++;showToast("✅","good");
+          sel=null;
+          if(placed===cons.length){const tot=sources.length+cons.length;const cc=correct+c2;setTimeout(()=>finishStage(Math.round(cc/tot*100),cc,tot),500);}
+        }else{
+          const chipTxt=sel.chip.textContent;sel.chip.classList.remove("sel");sel=null;
+          await registerError(`«&nbsp;<b>${escapeHtml(chipTxt)}</b>&nbsp;» n'est pas dans la bonne colonne.<br>Pense à l'effet principal de cette conséquence (santé, environnement ou argent).`);
+        }
       };
     });
   }
@@ -1288,23 +1464,31 @@ function gameBoss(mount,st){
    ============================================================ */
 function finishStage(pct,correct,total){
   const st=cur.stage;
+  // Tri (ex.1) et Pollueurs (ex.5) : atteindre la fin signifie ≤ 1 erreur
+  // (la 2ᵉ relance le jeu) -> médaille accordée. Les autres exercices et le
+  // boss conservent l'exigence de 100 %.
+  const won = hasErrorJoker(st) ? true : (pct===100);
   const prev=student.stages[st.id]||{best:0,completed:false,attempts:0};
-  const rec={ best:Math.max(prev.best,pct), completed:prev.completed||pct===100, attempts:(prev.attempts||0)+1 };
+  const rec={ best:Math.max(prev.best,pct), completed:prev.completed||won, attempts:(prev.attempts||0)+1 };
   student.stages[st.id]=rec;
   let newBadge=false;
-  if(pct===100 && !student.badges.includes(st.id)){ student.badges.push(st.id); newBadge=true; if(student.current===cur.index)student.current=Math.min(STAGES.length,cur.index+1); }
+  if(won && !student.badges.includes(st.id)){ student.badges.push(st.id); newBadge=true; if(student.current===cur.index)student.current=Math.min(STAGES.length,cur.index+1); }
   persist();
-  renderResult(pct,correct,total,newBadge);
+  renderResult(pct,correct,total,newBadge,won);
 }
-function renderResult(pct,correct,total,newBadge){
-  const st=cur.stage; const win=pct===100;
+function renderResult(pct,correct,total,newBadge,won){
+  clearErrorUI();
+  const st=cur.stage; const win=(won!==undefined)?won:(pct===100);
   if(win)confetti();
   let msg, actions;
   if(win){
+    const perfect = pct>=100;
     msg=`<div class="bigbadge" style="background:radial-gradient(circle at 50% 35%,#fff,${st.accent})">${st.badge.emoji}</div>
          <h2>Médaille gagnée&nbsp;!</h2>
          <div class="scorebig">${pct}%</div>
-         <div class="fb"><b>${st.badge.name}</b><br>Tu as tout réussi sur ${st.title}&nbsp;! Cette île est terminée. 🎉</div>`;
+         <div class="fb"><b>${st.badge.name}</b><br>${perfect
+            ? `Tu as tout réussi sur ${st.title}&nbsp;! Cette île est terminée. 🎉`
+            : `Bravo, tu as réussi ${st.title} avec un seul petit faux pas — bien rattrapé&nbsp;! Cette île est terminée. 🎉`}</div>`;
     const last=student.badges.length===STAGES.length;
     actions = last
       ? `<button class="btn big" onclick="renderFinale()">🏆 Mon diplôme&nbsp;!</button>`
@@ -1324,6 +1508,7 @@ function renderResult(pct,correct,total,newBadge){
    FINALE : DIPLÔME
    ============================================================ */
 function renderFinale(){
+  clearErrorUI();
   confetti();
   const meds=STAGES.map(s=>`<div class="m" title="${s.badge.name}" style="background:radial-gradient(circle at 50% 35%,#fff,${s.accent})">${s.badge.emoji}</div>`).join("");
   app.innerHTML = hud() + `
@@ -1366,9 +1551,23 @@ function showDiplomaView(){
   document.body.appendChild(view);
 }
 
-/* Lance le mini-jeu final AquaRun (même page) */
+/* Lance le mini-jeu final AquaRun.
+   On transmet l'élève courant (paramètre d'URL + pointeur local) pour qu'AquaRun
+   puisse enregistrer son score, lu ensuite par le tableau de bord prof. */
 function launchAquaRun(){
-  window.location.href="AquaRun/index.html";
+  try{ Store.set(curKey(), student?student.name:""); }catch(e){}
+  const q = "?code="+encodeURIComponent(CONFIG.sessionCode)
+          + (student?("&s="+encodeURIComponent(student.name)):"");
+  window.location.href="aquarun/index.html"+q;
+}
+
+/* Au démarrage : pousse vers la synchro (Firebase) les scores AquaRun
+   enregistrés en local par la page du mini-jeu. */
+function flushAquaPending(){
+  let names=[]; try{names=JSON.parse(Store.get(aquaPendKey())||"[]");}catch(e){}
+  if(!names.length) return;
+  names.forEach(n=>{ const s=Sync.loadLocal(n); if(s) Sync.save(s); });
+  try{ Store.del(aquaPendKey()); }catch(e){}
 }
 
 /* ============================================================
@@ -1428,21 +1627,23 @@ function drawDash(list){
       return `<td title="${st.title}">${done?'<span class="badge-mini">'+st.badge.emoji+'</span>':''}<span class="minibar"><i style="width:${v}%;background:${done?'#43A047':'#FB8C00'}"></i></span></td>`;}).join("");
     const tp=totalPct(s);
     const ago=timeAgo(s.lastActive);
-    return `<tr><td><b>${escapeHtml(s.name)}</b></td><td>${(s.badges||[]).length}/${STAGES.length}</td><td><b>${tp}%</b></td>${cells}<td style="color:#888;font-size:.85rem">${ago}</td>
+    const aqua=(s.aqua&&s.aqua.best)||0;
+    const aquaCell=`<td title="Meilleur score AquaRun${(s.aqua&&s.aqua.stage2)?' — Stage 2 atteint':''}"><b>${aqua}</b>${(s.aqua&&s.aqua.stage2)?' 🏭':''}</td>`;
+    return `<tr><td><b>${escapeHtml(s.name)}</b></td><td>${(s.badges||[]).length}/${STAGES.length}</td><td><b>${tp}%</b></td>${cells}${aquaCell}<td style="color:#888;font-size:.85rem">${ago}</td>
       <td class="noprint"><button class="btn ghost" style="font-size:.8rem;padding:.3em .7em" onclick="resetOne('${escapeHtml(s.name).replace(/'/g,"\\'")}')">♻️</button></td></tr>`;
   }).join("");
   const heads=STAGES.map(st=>`<th title="${st.title}">${st.emoji}</th>`).join("");
   body.innerHTML=`<div style="overflow-x:auto"><table>
-    <thead><tr><th>Prénom</th><th>Méd.</th><th>Total</th>${heads}<th>Activité</th><th class="noprint"></th></tr></thead>
+    <thead><tr><th>Prénom</th><th>Méd.</th><th>Total</th>${heads}<th title="AquaRun — meilleur score">🎮</th><th>Activité</th><th class="noprint"></th></tr></thead>
     <tbody>${rows}</tbody></table></div>
-    <p style="color:#888;font-size:.85rem;margin-top:10px">Les barres montrent le meilleur score par jeu. Vert = réussi à 100% (verrouillé).</p>`;
+    <p style="color:#888;font-size:.85rem;margin-top:10px">Les barres montrent le meilleur score par jeu. Vert = réussi à 100% (verrouillé). La colonne 🎮 = meilleur score AquaRun (🏭 = Stage 2 atteint).</p>`;
 }
 function resetOne(name){ if(confirm("Réinitialiser la progression de "+name+" ?")){Sync.reset(name);showToast("Réinitialisé","good");renderTeacher();} }
 function timeAgo(ts){ if(!ts)return"—"; const s=Math.floor((Date.now()-ts)/1000); if(s<60)return"à l'instant"; if(s<3600)return Math.floor(s/60)+" min"; if(s<86400)return Math.floor(s/3600)+" h"; return Math.floor(s/86400)+" j"; }
 function exportCSV(){
-  const head=["Prénom","Médailles","Total %",...STAGES.map(s=>s.title+" %"),"Dernière activité"];
+  const head=["Prénom","Médailles","Total %",...STAGES.map(s=>s.title+" %"),"AquaRun (score)","AquaRun Stage 2","Dernière activité"];
   const lines=[head.join(";")];
-  _lastList.forEach(s=>{const row=[s.name,(s.badges||[]).length,totalPct(s),...STAGES.map(st=>s.stages?.[st.id]?.best||0),new Date(s.lastActive||Date.now()).toLocaleString("fr-FR")];lines.push(row.join(";"));});
+  _lastList.forEach(s=>{const row=[s.name,(s.badges||[]).length,totalPct(s),...STAGES.map(st=>s.stages?.[st.id]?.best||0),(s.aqua&&s.aqua.best)||0,(s.aqua&&s.aqua.stage2)?"oui":"non",new Date(s.lastActive||Date.now()).toLocaleString("fr-FR")];lines.push(row.join(";"));});
   download("eau_progression.csv",lines.join("\n"),"text/csv");
 }
 function exportJSON(){ download("eau_progression.json",JSON.stringify(_lastList,null,2),"application/json"); }
@@ -1456,7 +1657,7 @@ function shuffle(a){for(let i=a.length-1;i>0;i--){const j=Math.floor(Math.random
 /* ============================================================
    DÉMARRAGE
    ============================================================ */
-(async function(){ await Sync.init(); renderWelcome(); })();
+(async function(){ await Sync.init(); flushAquaPending(); renderWelcome(); })();
 </script>
 </body>
 </html>

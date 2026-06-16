@@ -29,6 +29,14 @@
   }
   .hint{color:#EAF6FF;text-align:center;margin-top:10px;font-size:1rem;text-shadow:0 2px 4px rgba(0,0,0,.3);}
   .backlink{position:fixed;top:12px;left:12px;z-index:5;}
+  .fslink{position:fixed;top:12px;right:12px;z-index:5;}
+
+  /* ===== Plein écran ===== */
+  :fullscreen{background:linear-gradient(180deg,#5EC8F2 0%,#2E9BD6 45%,#1565C0 100%);}
+  :fullscreen .stagewrap{width:min(1280px,96vw);}
+  :fullscreen .legend{display:none;}            /* on maximise le jeu en plein écran */
+  :-webkit-full-screen .stagewrap{width:min(1280px,96vw);}
+  :-webkit-full-screen .legend{display:none;}
   a.btn,button.btn{
     display:inline-flex;align-items:center;gap:.4em;justify-content:center;text-decoration:none;
     background:var(--gold);color:#5A3E00;font-weight:bold;font-size:1rem;font-family:inherit;cursor:pointer;
@@ -78,11 +86,13 @@
 </head>
 <body>
   <div class="backlink"><a class="btn ghost" href="../index.html">↩️ Retour à l'aventure</a></div>
+  <div class="fslink"><button class="btn ghost" id="fsBtn" type="button">⛶ Plein écran</button></div>
   <h1>💧 AquaRun – Sauve la rivière&nbsp;!</h1>
   <div class="stagewrap">
     <canvas id="game" width="800" height="400"></canvas>
   </div>
-  <div class="hint">ESPACE, clic ou tap pour passer de la <b>surface</b> au <b>fond</b></div>
+  <div class="hint">ESPACE, clic ou tap pour passer de la <b>surface</b> au <b>fond</b><br>
+    🏭 À <b>4000 points</b> : <b>Stage 2 — rivière polluée</b>, bien plus dure (plus de polluants, peu de nettoyants, ça accélère). Si tu coules, c'est game over et tu rejoues depuis le Stage 1.</div>
 
   <div class="legend">
     <div class="legbox bad">
@@ -92,19 +102,53 @@
       <div class="legrow"><span class="pic">☠️</span><span class="nm">Nuage de nitrates <small>zone large</small></span><span class="tag pol">+18 pollution</span><span class="tag fx">💨 accélère</span></div>
       <div class="legrow"><span class="pic">🚽</span><span class="nm">Eaux usées <small>au fond</small></span><span class="tag pol">+22 pollution</span></div>
       <div class="legrow"><span class="pic">⚫</span><span class="nm">Microplastique <small>petit, dès le niv. 4</small></span><span class="tag pol">+10 pollution</span></div>
+      <div class="legrow"><span class="pic">🛞</span><span class="nm">Pneu <small>Stage 2 — au fond</small></span><span class="tag pol">+15 pollution</span></div>
+      <div class="legrow"><span class="pic">🧪</span><span class="nm">Produit chimique <small>Stage 2</small></span><span class="tag pol">+16 pollution</span></div>
+      <div class="legrow"><span class="pic">🦠</span><span class="nm">Bactéries <small>Stage 2 — zone large</small></span><span class="tag pol">+20 pollution</span><span class="tag fx">💨 accélère</span></div>
     </div>
     <div class="legbox good">
       <h3>✨ À ATTRAPER — traitements</h3>
       <div class="legrow"><span class="pic">🟡</span><span class="nm">Grain de sable <small>filtration</small></span><span class="tag pur">−3 pollution</span><span class="tag pts">+10 pts</span></div>
       <div class="legrow"><span class="pic">🫧</span><span class="nm">Bulle d'ozone</span><span class="tag pur">−5 pollution</span><span class="tag pts">+15 pts</span></div>
       <div class="legrow"><span class="pic">💊</span><span class="nm">Pastille de chlore</span><span class="tag pur">−8 pollution</span><span class="tag pts">+20 pts</span></div>
-      <div class="legrow"><span class="pic">🌿</span><span class="nm">Plante aquatique <small>au fond</small></span><span class="tag pur">−4 pollution</span><span class="tag pts">+10 pts</span><span class="tag fx">🐢 ralentit</span></div>
+      <div class="legrow"><span class="pic">🌿</span><span class="nm">Plante aquatique <small>au fond</small></span><span class="tag pur">−4 pollution</span><span class="tag pts">+10 pts</span><span class="tag fx">🐢 ralentit (permanent)</span></div>
     </div>
   </div>
 
 <script>
 "use strict";
 (function(){
+
+/* ====== IDENTIFICATION DE L'ÉLÈVE (pour le suivi prof) ======
+   Le jeu principal nous transmet l'élève via l'URL (?code=...&s=...) ou via un
+   pointeur local. On lit/écrit son score dans le MÊME enregistrement localStorage
+   que le jeu principal, puis on le marque « à resynchroniser ». */
+function qparam(k){ try{return new URLSearchParams(location.search).get(k);}catch(e){return null;} }
+function safeKey(n){ return (n||"").toLowerCase().normalize("NFD").replace(/[\u0300-\u036f]/g,"").replace(/[^a-z0-9]/g,"_").slice(0,40)||"anon"; }
+const SESSION = qparam("code") || "";
+let STUDENT = qparam("s") || "";
+try{ if(!STUDENT && SESSION) STUDENT = localStorage.getItem("eauquest_"+SESSION+"_current") || ""; }catch(e){}
+function localKey(n){ return "eauquest_"+SESSION+"_s_"+safeKey(n); }
+function saveAquaScore(score, reachedStage2){
+  if(!SESSION || !STUDENT) return;          // partie anonyme : rien à enregistrer
+  let s=null;
+  try{ s=JSON.parse(localStorage.getItem(localKey(STUDENT))||"null"); }catch(e){ s=null; }
+  if(!s) return;
+  s.aqua = s.aqua || {best:0, stage2:false, plays:0, lastPlayed:0};
+  s.aqua.best = Math.max(s.aqua.best||0, Math.floor(score)||0);
+  if(reachedStage2) s.aqua.stage2 = true;
+  s.aqua.plays = (s.aqua.plays||0)+1;
+  s.aqua.lastPlayed = Date.now();
+  s.lastActive = Date.now();
+  try{ localStorage.setItem(localKey(STUDENT), JSON.stringify(s)); }catch(e){}
+  // file d'attente de resynchro (le jeu principal poussera vers Firebase au prochain chargement)
+  try{
+    const pk="eauquest_"+SESSION+"_aquapend";
+    let names=JSON.parse(localStorage.getItem(pk)||"[]");
+    if(!names.includes(STUDENT)){ names.push(STUDENT); localStorage.setItem(pk, JSON.stringify(names)); }
+  }catch(e){}
+}
+
 const cv=document.getElementById("game");
 const ctx=cv.getContext("2d");
 const W=800, H=400;
@@ -122,12 +166,33 @@ let spawnTimer=0;
 let items=[];                // obstacles + collectibles à l'écran
 let particles=[];
 let level=1;
-let slowUntil=0;             // BONUS plante 🌿 : ralentit le défilement (avantage)
-let fastUntil=0;             // MALUS nitrate ☠️ : accélère le défilement (handicap)
+let fastUntil=0;             // MALUS nitrate ☠️ : accélère temporairement (handicap)
+let slowFactor=1;           // BONUS plante 🌿 : ralentissement PERMANENT cumulé
+let plantFlashUntil=0;      // petit retour visuel quand on attrape une plante
+let stage2StartDist=0;      // distance au moment d'entrer dans le Stage 2 (pour le crescendo)
 let purifiedUntil=0;        // affichage "Eau purifiée ! Bonus x2"
 let doubleUntil=0;          // bonus x2 actif
+let stage=1;                // 1 = rivière normale, 2 = rivière polluée
+let reachedStage2=false;    // l'élève a-t-il atteint le Stage 2 dans cette partie ?
+let nextStage2At=4000;      // score à atteindre pour (re)passer en Stage 2
+let stageMsg="", stageMsgUntil=0;   // bandeau de transition de stage
 const player={ y:SURFACE, targetY:SURFACE };
 let bgOffset=0, sandOffset=0;
+
+/* ====== RÉGLAGES DE VITESSE (faciles à ajuster) ======
+   La vitesse accélère de façon CRESCENDO (continue) dans les deux stages.
+   - Stage 1 : de START_SPEED jusqu'à SPEED_CAP_S1.
+   - Stage 2 : repart du plafond du Stage 1 et grimpe jusqu'à SPEED_CAP_S2
+     (= 2× le plafond Stage 1) pour mettre les réflexes à l'épreuve.
+   La plante 🌿 applique un ralentissement PERMANENT mais plus doux, sans jamais
+   descendre sous SLOW_FLOOR (2× la vitesse de départ). */
+const START_SPEED  = 2.7;            // vitesse en début de partie
+const SPEED_CAP_S1 = 6.2;            // plafond Stage 1 (= « max actuel »)
+const SPEED_CAP_S2 = SPEED_CAP_S1*2; // plafond Stage 2 = 2× le max actuel (12.4)
+const ACCEL_S1     = 0.00050;        // accélération continue au Stage 1 (par unité de distance)
+const ACCEL_S2     = 0.00075;        // accélération continue au Stage 2 (un peu plus forte)
+const SLOW_FLOOR   = START_SPEED*2;  // plante : jamais en dessous de 2× la vitesse de départ (5.4)
+const PLANT_SLOW   = 0.90;           // chaque plante : -10% de vitesse, permanent (ralentit « moins » qu'avant)
 
 /* ====== DÉFINITIONS DES OBJETS ====== */
 // lane : "top" surface, "bottom" fond, "any" aléatoire, "wide" zone large
@@ -136,7 +201,11 @@ const POLLUTANTS={
   bouteille:{emoji:"🧴", dp:+7,  score:0, lane:"any",    r:20 },
   nitrate: { emoji:"☠️", dp:+18, score:0, lane:"wide",   r:30, fast:true },
   usees:   { emoji:"🚽", dp:+22, score:0, lane:"bottom", r:26 },
-  micro:   { emoji:"⚫", dp:+10, score:0, lane:"any",    r:9 }   // microplastique (niveau 4)
+  micro:   { emoji:"⚫", dp:+10, score:0, lane:"any",    r:9 },   // microplastique (niveau 4)
+  // — Stage 2 : rivière polluée —
+  pneu:    { emoji:"🛞", dp:+15, score:0, lane:"bottom", r:26 },
+  chimique:{ emoji:"🧪", dp:+16, score:0, lane:"any",    r:22 },
+  bacterie:{ emoji:"🦠", dp:+20, score:0, lane:"wide",   r:30, fast:true }
 };
 // Bonus : la dépollution est volontairement faible (juste un coup de pouce)
 const TREATS={
@@ -162,15 +231,25 @@ function levelForScore(s){ if(s>=2000)return 4; if(s>=1000)return 3; if(s>=500)r
 
 /* ====== SPAWN ====== */
 function spawnOne(forcePoll, xOffset){
-  // pools selon le niveau de difficulté
-  let pollPool=["baril","bouteille","bouteille"];   // bouteilles plus fréquentes
-  if(level>=2) pollPool.push("nitrate","baril");
-  if(level>=3) pollPool.push("usees","nitrate");
-  if(level>=4) pollPool.push("micro","micro","usees");
-  const treatPool=["sable","bulle","chlore","plante"];
+  // pools selon le stage ET le niveau de difficulté
+  let pollPool, treatPool, pollProb;
+  if(stage===2){
+    // Stage 2 — rivière polluée : d'AUTRES polluants, plus nombreux et plus lourds,
+    // et MOINS de nettoyants (seulement les plus faibles).
+    pollPool=["usees","nitrate","pneu","chimique","baril","micro","bacterie"];
+    if(level>=3) pollPool.push("usees","chimique","bacterie");
+    treatPool=["sable","bulle"];        // moins de nettoyants
+    pollProb=0.85;                      // beaucoup plus de polluants
+  }else{
+    pollPool=["baril","bouteille","bouteille"];   // bouteilles plus fréquentes
+    if(level>=2) pollPool.push("nitrate","baril");
+    if(level>=3) pollPool.push("usees","nitrate");
+    if(level>=4) pollPool.push("micro","micro","usees");
+    treatPool=["sable","bulle","chlore","plante"];
+    pollProb=0.70;                      // ~70% polluant, 30% traitement
+  }
 
-  // ~70% polluant, 30% traitement (bonus plus rares)
-  const isPoll = forcePoll ? true : (Math.random()<0.70);
+  const isPoll = forcePoll ? true : (Math.random()<pollProb);
   const key = isPoll ? pollPool[(Math.random()*pollPool.length)|0]
                      : treatPool[(Math.random()*treatPool.length)|0];
   const def = isPoll ? POLLUTANTS[key] : TREATS[key];
@@ -183,8 +262,14 @@ function spawnOne(forcePoll, xOffset){
 function spawn(){
   spawnOne();
   // densité croissante : aux niveaux élevés, un 2e (voire 3e) polluant en renfort
-  if(level>=2 && Math.random()<0.22+level*0.09) spawnOne(true, 70+Math.random()*60);
-  if(level>=4 && Math.random()<0.40)            spawnOne(true, 150+Math.random()*70);
+  if(stage===2){
+    // rivière polluée : un renfort occasionnel (on espace un peu les polluants,
+    // la difficulté vient surtout de la rareté des nettoyants et de la vitesse)
+    if(Math.random()<0.32) spawnOne(true, 95+Math.random()*75);
+  }else{
+    if(level>=2 && Math.random()<0.22+level*0.09) spawnOne(true, 70+Math.random()*60);
+    if(level>=4 && Math.random()<0.40)            spawnOne(true, 150+Math.random()*70);
+  }
 }
 
 /* ====== PARTICULES ====== */
@@ -197,10 +282,12 @@ function burst(x,y,color,n){
 
 /* ====== RESET ====== */
 function reset(){
-  frame=0;distance=0;bonusScore=0;speed=1.7;pollution=25;spawnTimer=0;
-  items=[];particles=[];level=1;slowUntil=0;fastUntil=0;purifiedUntil=0;doubleUntil=0;
+  frame=0;distance=0;bonusScore=0;speed=START_SPEED;pollution=25;spawnTimer=0;
+  items=[];particles=[];level=1;fastUntil=0;slowFactor=1;plantFlashUntil=0;purifiedUntil=0;doubleUntil=0;
   player.y=SURFACE;player.targetY=SURFACE;bgOffset=0;sandOffset=0;
+  stage=1;reachedStage2=false;nextStage2At=4000;stage2StartDist=0;stageMsg="";stageMsgUntil=0;
 }
+function setStageMsg(t){ stageMsg=t; stageMsgUntil=performance.now()+2400; }
 
 /* ====== ENTRÉE JOUEUR ====== */
 function toggleLane(){
@@ -240,6 +327,28 @@ window.addEventListener("keydown",e=>{
   }
 });
 
+/* ====== PLEIN ÉCRAN ====== */
+const fsBtn=document.getElementById("fsBtn");
+function isFs(){ return document.fullscreenElement || document.webkitFullscreenElement; }
+function enterFs(){
+  const el=document.documentElement;
+  const fn=el.requestFullscreen||el.webkitRequestFullscreen||el.msRequestFullscreen;
+  if(fn) try{ fn.call(el); }catch(e){}
+}
+function exitFs(){
+  const fn=document.exitFullscreen||document.webkitExitFullscreen||document.msExitFullscreen;
+  if(fn) try{ fn.call(document); }catch(e){}
+}
+if(fsBtn){
+  fsBtn.addEventListener("click",()=>{ isFs()?exitFs():enterFs(); });
+  const sync=()=>{ fsBtn.textContent = isFs()? "⛶ Quitter le plein écran" : "⛶ Plein écran"; };
+  document.addEventListener("fullscreenchange",sync);
+  document.addEventListener("webkitfullscreenchange",sync);
+}
+
+/* Sauvegarde le score si on quitte la page en pleine partie (sans game over). */
+window.addEventListener("pagehide",()=>{ if(state==="play") saveAquaScore(currentScore(), reachedStage2); });
+
 /* ====== COLLISIONS ====== */
 function hit(it){
   const dx=Math.abs(it.x-PLAYER_X);
@@ -257,13 +366,28 @@ function update(dt){
   // niveau courant (détermine la vitesse ET les obstacles)
   level=levelForScore(currentScore());
 
-  // vitesse SELON LE NIVEAU : accélère par paliers + légère montée continue
-  const LEVEL_SPEED={1:2.7, 2:3.6, 3:4.6, 4:5.6};
-  let baseSpeed=(LEVEL_SPEED[level]||2.7)+Math.floor(distance/1400)*0.1;
-  baseSpeed=Math.min(baseSpeed,6.2);            // plafond (reste jouable)
-  speed=baseSpeed;
-  if(now<slowUntil) speed*=0.55;   // BONUS plante 🌿 : ralentit = avantage
-  if(now<fastUntil) speed*=1.55;   // MALUS nitrate ☠️ : accélère = handicap
+  // passage en Stage 2 dès que le score franchit le seuil
+  if(stage===1 && currentScore()>=nextStage2At){
+    stage=2; reachedStage2=true; stage2StartDist=distance;
+    setStageMsg("🏭 STAGE 2 — Rivière polluée !");
+    setFlash("#9aa14a");
+  }
+
+  // vitesse CRESCENDO (accélération continue), plafonnée selon le stage
+  let baseSpeed;
+  if(stage===2){
+    // repart du plafond du Stage 1 puis grimpe jusqu'à 2× ce plafond
+    baseSpeed = SPEED_CAP_S1 + (distance - stage2StartDist)*ACCEL_S2;
+    baseSpeed = Math.min(baseSpeed, SPEED_CAP_S2);
+  }else{
+    baseSpeed = START_SPEED + distance*ACCEL_S1;
+    baseSpeed = Math.min(baseSpeed, SPEED_CAP_S1);
+  }
+  // plante 🌿 : ralentissement PERMANENT, mais jamais sous SLOW_FLOOR
+  speed = baseSpeed * slowFactor;
+  const floor = Math.min(baseSpeed, SLOW_FLOOR);   // pas de plancher au-dessus de la vitesse réelle
+  if(speed < floor) speed = floor;
+  if(now<fastUntil) speed*=1.55;   // MALUS nitrate ☠️ : accélère temporairement = handicap
 
   distance+=speed*dt;
 
@@ -278,7 +402,8 @@ function update(dt){
   spawnTimer-=dt;
   if(spawnTimer<=0){
     spawn();
-    const minF=level>=3?34:48, maxF=level>=3?62:84;
+    let minF=level>=3?34:48, maxF=level>=3?62:84;
+    if(stage===2){ minF=40; maxF=68; }   // un peu plus espacé qu'avant (mais bonus rares + vitesse = très dur)
     spawnTimer=minF+Math.random()*(maxF-minF);
   }
 
@@ -300,7 +425,7 @@ function update(dt){
         bonusScore+=add;
         pollution=Math.max(0,pollution+it.def.dp);
         burst(it.x,it.y,"#7CFFB2",10);
-        if(it.def.slow) slowUntil=now+2600;   // ralentit le défilement (avantage)
+        if(it.def.slow){ slowFactor=Math.max(0.25, slowFactor*PLANT_SLOW); plantFlashUntil=now+1300; }  // ralentissement permanent
         setFlash("#7CFFB2");
         // eau purifiée !
         if(pollution===0 && now>purifiedUntil){
@@ -320,8 +445,12 @@ function update(dt){
 
   if(flashLife>0)flashLife-=dt;
 
-  // game over
-  if(pollution>=100){ state="over"; }
+  // pollution maximale -> GAME OVER (Stage 1 comme Stage 2).
+  // Il n'y a pas de retour direct Stage 2 -> Stage 1 : on rejoue depuis le Stage 1.
+  if(pollution>=100){
+    state="over";
+    saveAquaScore(currentScore(), reachedStage2);   // enregistre le score pour le suivi prof
+  }
 }
 
 /* ====== RENDU ====== */
@@ -329,9 +458,13 @@ let flash=null, flashLife=0;
 function setFlash(c){flash=c;flashLife=8;}
 
 function drawBackground(){
-  // eau : dégradé ciel -> profond
+  // eau : dégradé ciel -> profond (Stage 1) ou eau trouble verdâtre (Stage 2)
   const g=ctx.createLinearGradient(0,0,0,H);
-  g.addColorStop(0,"#8FE3FF");g.addColorStop(0.5,"#2E9BD6");g.addColorStop(1,"#0B3C5D");
+  if(stage===2){
+    g.addColorStop(0,"#8a9a4e");g.addColorStop(0.5,"#5d6b2e");g.addColorStop(1,"#2e2f12");
+  }else{
+    g.addColorStop(0,"#8FE3FF");g.addColorStop(0.5,"#2E9BD6");g.addColorStop(1,"#0B3C5D");
+  }
   ctx.fillStyle=g;ctx.fillRect(0,0,W,H);
 
   // rayons de lumière en surface
@@ -436,7 +569,7 @@ function drawHUD(){
   ctx.fillStyle="rgba(0,0,0,.35)";ctx.fillText("Score : "+currentScore(),14,32);
   ctx.fillStyle="#fff";ctx.fillText("Score : "+currentScore(),12,30);
   ctx.font="bold 14px Trebuchet MS";
-  ctx.fillStyle="#EAF6FF";ctx.fillText("Distance : "+Math.floor(distance/10)+" m   ·   Niveau "+level,12,58);
+  ctx.fillStyle="#EAF6FF";ctx.fillText("Distance : "+Math.floor(distance/10)+" m   ·   Niveau "+level+(stage===2?"   ·   🏭 STAGE 2 — rivière polluée":""),12,58);
 
   // jauge de pollution (haut droite)
   const bw=180,bh=20,bx=W-bw-16,by=30;
@@ -460,8 +593,15 @@ function drawHUD(){
   }
   // indicateurs d'effet en cours
   ctx.textAlign="center";ctx.font='bold 15px "Noto Color Emoji",Trebuchet MS';
-  if(performance.now()<slowUntil){ ctx.fillStyle="#B9F6CA"; ctx.fillText("🌿 Ralenti !",PLAYER_X,player.y-PLAYER_R-24); }
+  if(performance.now()<plantFlashUntil){ ctx.fillStyle="#B9F6CA"; ctx.fillText("🌿 Ralenti (permanent) !",PLAYER_X,player.y-PLAYER_R-24); }
   if(performance.now()<fastUntil){ ctx.fillStyle="#FF8A80"; ctx.fillText("☠️ Accélère !",PLAYER_X,player.y-PLAYER_R-24); }
+
+  // bandeau de transition de stage (entrée Stage 2 / retour Stage 1)
+  if(performance.now()<stageMsgUntil){
+    ctx.textAlign="center";ctx.font='bold 32px Arial,"Noto Color Emoji"';
+    ctx.fillStyle="rgba(0,0,0,.45)";ctx.fillText(stageMsg,W/2+2,H/2+2);
+    ctx.fillStyle="#FFD54F";ctx.fillText(stageMsg,W/2,H/2);
+  }
 }
 
 /* ====== ÉCRANS ====== */
@@ -552,7 +692,7 @@ function loop(ts){
 // précharge les emoji utilisés par le canvas (le texte force le chargement des
 // bons fichiers woff2 découpés par plage de caractères)
 if(document.fonts&&document.fonts.load){
-  var EMO="🛢️🧴☠️🚽⚫🟡🫧💊🌿💧💀💡✨";
+  var EMO="🛢️🧴☠️🚽⚫🛞🧪🦠🟡🫧💊🌿💧💀💡✨";
   ["32px","48px","64px"].forEach(s=>{try{document.fonts.load(s+' "Noto Color Emoji"',EMO);}catch(e){}});
   // une fois la police prête, on vide le cache pour re-rasteriser proprement les emoji
   document.fonts.ready.then(function(){ for(var k in emojiCache) delete emojiCache[k]; }).catch(function(){});
