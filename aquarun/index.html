@@ -1,0 +1,564 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
+<title>AquaRun – Sauve la rivière !</title>
+<!-- Police emoji identique sur tous les appareils, hébergée en local (hors-ligne) -->
+<link href="../fonts/noto-color-emoji.css" rel="stylesheet">
+<style>
+  :root{
+    --sea-deep:#0B3C5D; --sea:#1565C0; --sky:#4FC3F7; --gold:#FFC107; --gold-dk:#E8A200;
+    --coral:#FF6B6B; --green:#26A69A; --ink:#143642; --paper:#FFFDF6;
+  }
+  *{box-sizing:border-box;-webkit-tap-highlight-color:transparent;}
+  html,body{margin:0;padding:0;height:100%;}
+  body{
+    font-family:"Trebuchet MS","Verdana","Noto Color Emoji",sans-serif;color:var(--ink);
+    background:linear-gradient(180deg,#5EC8F2 0%,#2E9BD6 45%,#1565C0 100%);
+    min-height:100%;display:flex;flex-direction:column;align-items:center;justify-content:center;
+    padding:14px;user-select:none;-webkit-user-select:none;
+  }
+  h1{font-family:"Arial Rounded MT Bold","Trebuchet MS",sans-serif;margin:0 0 6px;
+     color:#fff;text-shadow:0 4px 0 #0A3A5C,0 7px 14px rgba(0,0,0,.3);text-align:center;
+     font-size:clamp(1.6rem,5vw,2.6rem);}
+  .stagewrap{position:relative;width:min(800px,96vw);}
+  canvas{
+    display:block;width:100%;height:auto;border-radius:18px;border:5px solid #fff;
+    box-shadow:0 16px 40px rgba(0,40,80,.4);background:#0B3C5D;touch-action:none;
+  }
+  .hint{color:#EAF6FF;text-align:center;margin-top:10px;font-size:1rem;text-shadow:0 2px 4px rgba(0,0,0,.3);}
+  .backlink{position:fixed;top:12px;left:12px;z-index:5;}
+  a.btn,button.btn{
+    display:inline-flex;align-items:center;gap:.4em;justify-content:center;text-decoration:none;
+    background:var(--gold);color:#5A3E00;font-weight:bold;font-size:1rem;font-family:inherit;cursor:pointer;
+    padding:.55em 1.1em;border-radius:14px;border:none;border-bottom:4px solid var(--gold-dk);
+    box-shadow:0 4px 0 rgba(0,0,0,.12);transition:transform .08s,filter .15s;
+  }
+  a.btn.ghost,button.btn.ghost{background:rgba(255,255,255,.9);color:var(--sea-deep);border-bottom-color:#9CC;}
+  .btn:active{transform:translateY(3px);border-bottom-width:1px;}
+
+  /* ===== Légende des pictos ===== */
+  .legend{width:min(800px,96vw);margin:14px auto 0;display:grid;grid-template-columns:1fr 1fr;gap:12px;}
+  @media(max-width:560px){.legend{grid-template-columns:1fr;}}
+  .legbox{background:rgba(255,255,255,.94);border-radius:16px;padding:12px 14px;
+    box-shadow:0 8px 22px rgba(0,40,80,.25);}
+  .legbox h3{margin:0 0 8px;font-size:1.05rem;display:flex;align-items:center;gap:.4em;}
+  .legbox.bad{border-top:5px solid var(--coral);}
+  .legbox.good{border-top:5px solid var(--green);}
+  .legbox.bad h3{color:#C62828;}
+  .legbox.good h3{color:#1B7A70;}
+  .legrow{display:flex;align-items:center;gap:10px;padding:4px 0;font-size:.95rem;border-top:1px solid #eef3f6;}
+  .legrow:first-of-type{border-top:none;}
+  .legrow .pic{font-size:1.5rem;flex:0 0 30px;text-align:center;}
+  .legrow .nm{flex:1;font-weight:bold;color:var(--ink);}
+  .legrow .nm small{display:block;font-weight:normal;color:#5d7385;font-size:.82rem;}
+  .tag{font-weight:bold;border-radius:10px;padding:2px 8px;font-size:.82rem;white-space:nowrap;}
+  .tag.pol{background:#FFE0E0;color:#C62828;}
+  .tag.pur{background:#D9F2E5;color:#1B7A70;}
+  .tag.pts{background:#FFF3C4;color:#8A6400;margin-left:4px;}
+  .tag.fx{background:#E3F0FF;color:#1565C0;margin-left:4px;}
+
+  /* ===== Adaptation smartphone ===== */
+  @media (max-width:600px){
+    body{padding:10px;justify-content:flex-start;padding-top:46px;}
+    h1{font-size:1.5rem;margin-bottom:4px;}
+    .backlink{top:8px;left:8px;}
+    .backlink .btn{font-size:.82rem;padding:.38em .7em;}
+    .hint{font-size:.88rem;margin-top:8px;}
+    .legend{margin-top:10px;gap:10px;}
+    .legbox{padding:10px 12px;border-radius:14px;}
+    .legbox h3{font-size:.92rem;}
+    .legrow{font-size:.84rem;gap:8px;padding:5px 0;flex-wrap:wrap;}
+    .legrow .pic{font-size:1.25rem;flex-basis:24px;}
+    .legrow .nm small{font-size:.76rem;}
+    .tag{font-size:.74rem;padding:2px 6px;}
+  }
+</style>
+</head>
+<body>
+  <div class="backlink"><a class="btn ghost" href="../index.html">↩️ Retour à l'aventure</a></div>
+  <h1>💧 AquaRun – Sauve la rivière&nbsp;!</h1>
+  <div class="stagewrap">
+    <canvas id="game" width="800" height="400"></canvas>
+  </div>
+  <div class="hint">ESPACE, clic ou tap pour passer de la <b>surface</b> au <b>fond</b></div>
+
+  <div class="legend">
+    <div class="legbox bad">
+      <h3>🚫 À ÉVITER — polluants</h3>
+      <div class="legrow"><span class="pic">🛢️</span><span class="nm">Baril de pétrole <small>en surface</small></span><span class="tag pol">+12 pollution</span></div>
+      <div class="legrow"><span class="pic">🧴</span><span class="nm">Bouteille plastique</span><span class="tag pol">+7 pollution</span></div>
+      <div class="legrow"><span class="pic">☠️</span><span class="nm">Nuage de nitrates <small>zone large</small></span><span class="tag pol">+18 pollution</span><span class="tag fx">💨 accélère</span></div>
+      <div class="legrow"><span class="pic">🚽</span><span class="nm">Eaux usées <small>au fond</small></span><span class="tag pol">+22 pollution</span></div>
+      <div class="legrow"><span class="pic">⚫</span><span class="nm">Microplastique <small>petit, dès le niv. 4</small></span><span class="tag pol">+10 pollution</span></div>
+    </div>
+    <div class="legbox good">
+      <h3>✨ À ATTRAPER — traitements</h3>
+      <div class="legrow"><span class="pic">🟡</span><span class="nm">Grain de sable <small>filtration</small></span><span class="tag pur">−3 pollution</span><span class="tag pts">+10 pts</span></div>
+      <div class="legrow"><span class="pic">🫧</span><span class="nm">Bulle d'ozone</span><span class="tag pur">−5 pollution</span><span class="tag pts">+15 pts</span></div>
+      <div class="legrow"><span class="pic">💊</span><span class="nm">Pastille de chlore</span><span class="tag pur">−8 pollution</span><span class="tag pts">+20 pts</span></div>
+      <div class="legrow"><span class="pic">🌿</span><span class="nm">Plante aquatique <small>au fond</small></span><span class="tag pur">−4 pollution</span><span class="tag pts">+10 pts</span><span class="tag fx">🐢 ralentit</span></div>
+    </div>
+  </div>
+
+<script>
+"use strict";
+(function(){
+const cv=document.getElementById("game");
+const ctx=cv.getContext("2d");
+const W=800, H=400;
+const SURFACE=110, BOTTOM=290;          // niveaux verticaux de la goutte
+const PLAYER_X=110, PLAYER_R=24;
+
+/* ====== ÉTAT GLOBAL ====== */
+let state="start";   // start | play | over
+let frame=0;
+let distance=0;
+let bonusScore=0;
+let speed=3;
+let pollution=25;            // 0..100  (>=100 => game over)
+let spawnTimer=0;
+let items=[];                // obstacles + collectibles à l'écran
+let particles=[];
+let level=1;
+let slowUntil=0;             // BONUS plante 🌿 : ralentit le défilement (avantage)
+let fastUntil=0;             // MALUS nitrate ☠️ : accélère le défilement (handicap)
+let purifiedUntil=0;        // affichage "Eau purifiée ! Bonus x2"
+let doubleUntil=0;          // bonus x2 actif
+const player={ y:SURFACE, targetY:SURFACE };
+let bgOffset=0, sandOffset=0;
+
+/* ====== DÉFINITIONS DES OBJETS ====== */
+// lane : "top" surface, "bottom" fond, "any" aléatoire, "wide" zone large
+const POLLUTANTS={
+  baril:   { emoji:"🛢️", dp:+12, score:0, lane:"top",    r:24 },
+  bouteille:{emoji:"🧴", dp:+7,  score:0, lane:"any",    r:20 },
+  nitrate: { emoji:"☠️", dp:+18, score:0, lane:"wide",   r:30, fast:true },
+  usees:   { emoji:"🚽", dp:+22, score:0, lane:"bottom", r:26 },
+  micro:   { emoji:"⚫", dp:+10, score:0, lane:"any",    r:9 }   // microplastique (niveau 4)
+};
+// Bonus : la dépollution est volontairement faible (juste un coup de pouce)
+const TREATS={
+  sable:  { emoji:"🟡", dp:-3,  score:10, lane:"any",    r:18 },
+  bulle:  { emoji:"🫧", dp:-5,  score:15, lane:"any",    r:20 },
+  chlore: { emoji:"💊", dp:-8,  score:20, lane:"any",    r:18 },
+  plante: { emoji:"🌿", dp:-4,  score:10, lane:"bottom", r:22, slow:true }
+};
+
+/* ====== UTILITAIRES ====== */
+function laneY(lane){
+  if(lane==="top") return SURFACE;
+  if(lane==="bottom") return BOTTOM;
+  if(lane==="wide") return (SURFACE+BOTTOM)/2;
+  return Math.random()<0.5?SURFACE:BOTTOM; // any
+}
+function lerp(a,b,t){return a+(b-a)*t;}
+function mix(c1,c2,t){ // c1,c2 = [r,g,b]
+  return `rgb(${Math.round(lerp(c1[0],c2[0],t))},${Math.round(lerp(c1[1],c2[1],t))},${Math.round(lerp(c1[2],c2[2],t))})`;
+}
+function currentScore(){ return Math.floor(distance/10)+bonusScore; }
+function levelForScore(s){ if(s>=2000)return 4; if(s>=1000)return 3; if(s>=500)return 2; return 1; }
+
+/* ====== SPAWN ====== */
+function spawnOne(forcePoll, xOffset){
+  // pools selon le niveau de difficulté
+  let pollPool=["baril","bouteille","bouteille"];   // bouteilles plus fréquentes
+  if(level>=2) pollPool.push("nitrate","baril");
+  if(level>=3) pollPool.push("usees","nitrate");
+  if(level>=4) pollPool.push("micro","micro","usees");
+  const treatPool=["sable","bulle","chlore","plante"];
+
+  // ~70% polluant, 30% traitement (bonus plus rares)
+  const isPoll = forcePoll ? true : (Math.random()<0.70);
+  const key = isPoll ? pollPool[(Math.random()*pollPool.length)|0]
+                     : treatPool[(Math.random()*treatPool.length)|0];
+  const def = isPoll ? POLLUTANTS[key] : TREATS[key];
+  items.push({
+    kind:isPoll?"poll":"treat", key, def,
+    x:W+40+(xOffset||0), y:laneY(def.lane), r:def.r,
+    bob:Math.random()*Math.PI*2
+  });
+}
+function spawn(){
+  spawnOne();
+  // densité croissante : aux niveaux élevés, un 2e (voire 3e) polluant en renfort
+  if(level>=2 && Math.random()<0.22+level*0.09) spawnOne(true, 70+Math.random()*60);
+  if(level>=4 && Math.random()<0.40)            spawnOne(true, 150+Math.random()*70);
+}
+
+/* ====== PARTICULES ====== */
+function burst(x,y,color,n){
+  for(let i=0;i<n;i++){
+    particles.push({x,y,vx:(Math.random()-0.5)*5,vy:(Math.random()-0.5)*5,
+      life:1,color});
+  }
+}
+
+/* ====== RESET ====== */
+function reset(){
+  frame=0;distance=0;bonusScore=0;speed=1.7;pollution=25;spawnTimer=0;
+  items=[];particles=[];level=1;slowUntil=0;fastUntil=0;purifiedUntil=0;doubleUntil=0;
+  player.y=SURFACE;player.targetY=SURFACE;bgOffset=0;sandOffset=0;
+}
+
+/* ====== ENTRÉE JOUEUR ====== */
+function toggleLane(){
+  if(state==="start"){ state="play"; reset(); return; }
+  if(state==="over"){ return; } // le bouton Rejouer gère
+  player.targetY = (player.targetY===SURFACE)?BOTTOM:SURFACE;
+}
+function tryButtons(mx,my){
+  // détecte les clics sur les boutons dessinés (Jouer / Rejouer)
+  for(const b of buttons){
+    if(mx>=b.x && mx<=b.x+b.w && my>=b.y && my<=b.y+b.h){ b.action(); return true; }
+  }
+  return false;
+}
+let buttons=[]; // boutons cliquables dessinés sur le canvas
+
+function canvasPos(e){
+  const rect=cv.getBoundingClientRect();
+  const sx=cv.width/rect.width, sy=cv.height/rect.height;
+  const cx=(e.touches?e.touches[0].clientX:e.clientX)-rect.left;
+  const cy=(e.touches?e.touches[0].clientY:e.clientY)-rect.top;
+  return {x:cx*sx, y:cy*sy};
+}
+function onPress(e){
+  e.preventDefault();
+  const p=canvasPos(e);
+  if(state!=="play"){ if(tryButtons(p.x,p.y))return; }
+  toggleLane();
+}
+cv.addEventListener("mousedown",onPress);
+cv.addEventListener("touchstart",onPress,{passive:false});
+window.addEventListener("keydown",e=>{
+  if(e.code==="Space"||e.key===" "){
+    e.preventDefault();
+    if(state==="over"){ state="play"; reset(); return; }
+    toggleLane();
+  }
+});
+
+/* ====== COLLISIONS ====== */
+function hit(it){
+  const dx=Math.abs(it.x-PLAYER_X);
+  const dy=Math.abs(it.y-player.y);
+  return dx < (it.r+PLAYER_R-6) && dy < (it.r+PLAYER_R-6);
+}
+
+/* ====== MISE À JOUR ====== */
+/* dt = facteur de temps normalisé sur 60 fps : garantit la MÊME vitesse de
+   défilement quel que soit l'appareil (PC rapide ou smartphone plus lent). */
+function update(dt){
+  frame+=dt;
+  const now=performance.now();
+
+  // niveau courant (détermine la vitesse ET les obstacles)
+  level=levelForScore(currentScore());
+
+  // vitesse SELON LE NIVEAU : accélère par paliers + légère montée continue
+  const LEVEL_SPEED={1:2.7, 2:3.6, 3:4.6, 4:5.6};
+  let baseSpeed=(LEVEL_SPEED[level]||2.7)+Math.floor(distance/1400)*0.1;
+  baseSpeed=Math.min(baseSpeed,6.2);            // plafond (reste jouable)
+  speed=baseSpeed;
+  if(now<slowUntil) speed*=0.55;   // BONUS plante 🌿 : ralentit = avantage
+  if(now<fastUntil) speed*=1.55;   // MALUS nitrate ☠️ : accélère = handicap
+
+  distance+=speed*dt;
+
+  // décor défile
+  bgOffset=(bgOffset+speed*dt)%W;
+  sandOffset=(sandOffset+speed*1.3*dt)%40;
+
+  // animation verticale fluide de la goutte
+  player.y=lerp(player.y,player.targetY,Math.min(1,0.18*dt));
+
+  // spawn
+  spawnTimer-=dt;
+  if(spawnTimer<=0){
+    spawn();
+    const minF=level>=3?34:48, maxF=level>=3?62:84;
+    spawnTimer=minF+Math.random()*(maxF-minF);
+  }
+
+  // déplacement + collisions
+  for(let i=items.length-1;i>=0;i--){
+    const it=items[i];
+    it.x-=speed*dt;
+    it.bob+=0.08*dt;
+    if(it.x<-50){ items.splice(i,1); continue; }
+    if(hit(it)){
+      if(it.kind==="poll"){
+        pollution=Math.min(100,pollution+it.def.dp);
+        burst(it.x,it.y,"#8B4513",10);
+        if(it.def.fast) fastUntil=now+1500;   // accélère le défilement (handicap)
+        setFlash("#ff3b3b");
+      }else{
+        let add=it.def.score;
+        if(now<doubleUntil) add*=2;
+        bonusScore+=add;
+        pollution=Math.max(0,pollution+it.def.dp);
+        burst(it.x,it.y,"#7CFFB2",10);
+        if(it.def.slow) slowUntil=now+2600;   // ralentit le défilement (avantage)
+        setFlash("#7CFFB2");
+        // eau purifiée !
+        if(pollution===0 && now>purifiedUntil){
+          purifiedUntil=now+2000; doubleUntil=now+2000;
+        }
+      }
+      items.splice(i,1);
+    }
+  }
+
+  // particules
+  for(let i=particles.length-1;i>=0;i--){
+    const p=particles[i];
+    p.x+=p.vx*dt;p.y+=p.vy*dt;p.vy+=0.15*dt;p.life-=0.03*dt;
+    if(p.life<=0)particles.splice(i,1);
+  }
+
+  if(flashLife>0)flashLife-=dt;
+
+  // game over
+  if(pollution>=100){ state="over"; }
+}
+
+/* ====== RENDU ====== */
+let flash=null, flashLife=0;
+function setFlash(c){flash=c;flashLife=8;}
+
+function drawBackground(){
+  // eau : dégradé ciel -> profond
+  const g=ctx.createLinearGradient(0,0,0,H);
+  g.addColorStop(0,"#8FE3FF");g.addColorStop(0.5,"#2E9BD6");g.addColorStop(1,"#0B3C5D");
+  ctx.fillStyle=g;ctx.fillRect(0,0,W,H);
+
+  // rayons de lumière en surface
+  ctx.save();ctx.globalAlpha=.12;ctx.fillStyle="#fff";
+  for(let i=0;i<6;i++){
+    const x=((i*180 - bgOffset*0.5)%(W+200))-100;
+    ctx.beginPath();ctx.moveTo(x,0);ctx.lineTo(x+60,0);ctx.lineTo(x+10,H*0.6);ctx.lineTo(x-30,H*0.6);ctx.closePath();ctx.fill();
+  }
+  ctx.restore();
+
+  // berge supérieure (herbe)
+  ctx.fillStyle="#3FA34D";ctx.fillRect(0,0,W,22);
+  ctx.fillStyle="#2E7D32";
+  for(let x=-(bgOffset%30);x<W;x+=30){ctx.fillRect(x,18,16,8);}
+
+  // fond sableux qui défile
+  ctx.fillStyle="#C9A24B";ctx.fillRect(0,H-34,W,34);
+  ctx.fillStyle="#B5893A";
+  for(let x=-sandOffset;x<W;x+=40){
+    ctx.beginPath();ctx.arc(x,H-34,10,Math.PI,0);ctx.fill();
+  }
+  // petits cailloux
+  ctx.fillStyle="#8d6e3a";
+  for(let x=-(bgOffset%120);x<W;x+=120){ctx.beginPath();ctx.arc(x+20,H-14,5,0,7);ctx.fill();ctx.beginPath();ctx.arc(x+60,H-10,3,0,7);ctx.fill();}
+}
+
+function drawPlayer(){
+  const t=pollution/100;                 // 0 propre -> 1 pollué
+  const col=mix([0,170,255],[139,69,19],t);
+  const dark=mix([0,100,180],[90,45,12],t);
+  const x=PLAYER_X, y=player.y;
+  // ombre
+  ctx.save();ctx.globalAlpha=.2;ctx.fillStyle="#000";
+  ctx.beginPath();ctx.ellipse(x,y+PLAYER_R+6,PLAYER_R*0.7,5,0,0,7);ctx.fill();ctx.restore();
+  // corps en goutte
+  ctx.beginPath();
+  ctx.moveTo(x,y-PLAYER_R-6);
+  ctx.bezierCurveTo(x+PLAYER_R+4,y-4, x+PLAYER_R, y+PLAYER_R, x, y+PLAYER_R);
+  ctx.bezierCurveTo(x-PLAYER_R, y+PLAYER_R, x-PLAYER_R-4, y-4, x, y-PLAYER_R-6);
+  ctx.closePath();
+  ctx.fillStyle=col;ctx.fill();
+  ctx.lineWidth=3;ctx.strokeStyle=dark;ctx.stroke();
+  // reflet
+  ctx.beginPath();ctx.ellipse(x-7,y-2,5,8,0,0,7);ctx.fillStyle="rgba(255,255,255,.5)";ctx.fill();
+  // yeux
+  ctx.fillStyle="#fff";
+  ctx.beginPath();ctx.ellipse(x-6,y+2,5,7,0,0,7);ctx.fill();
+  ctx.beginPath();ctx.ellipse(x+6,y+2,5,7,0,0,7);ctx.fill();
+  ctx.fillStyle="#143642";
+  ctx.beginPath();ctx.arc(x-5,y+3,2.6,0,7);ctx.fill();
+  ctx.beginPath();ctx.arc(x+7,y+3,2.6,0,7);ctx.fill();
+  // bouche
+  ctx.beginPath();ctx.lineWidth=2.4;ctx.strokeStyle="#143642";
+  if(t>0.6){ctx.arc(x,y+14,5,Math.PI,0);} else {ctx.arc(x,y+10,5,0,Math.PI);}
+  ctx.stroke();
+}
+
+/* Cache d'emoji pré-rendus : chaque emoji est rasterisé UNE fois dans un petit
+   canvas, puis recopié avec drawImage. Bien plus rapide — surtout sur Firefox,
+   qui rend très lentement les emoji couleur via fillText à chaque frame. */
+const emojiCache={};
+function emojiSprite(emoji,size){
+  const key=emoji+"@"+size;
+  let c=emojiCache[key];
+  if(c) return c;
+  const pad=Math.ceil(size*0.3);
+  c=document.createElement("canvas");
+  c.width=c.height=size+pad*2;
+  const g=c.getContext("2d");
+  g.textAlign="center";g.textBaseline="middle";
+  g.font=size+'px "Noto Color Emoji",serif';
+  g.fillText(emoji,c.width/2,c.height/2);
+  emojiCache[key]=c;
+  return c;
+}
+function drawItems(){
+  for(const it of items){
+    const yy=it.y+Math.sin(it.bob)*4;
+    // halo léger pour les traitements
+    if(it.kind==="treat"){
+      ctx.save();ctx.globalAlpha=.35;ctx.fillStyle="#CFFFE0";
+      ctx.beginPath();ctx.arc(it.x,yy,it.r+6,0,7);ctx.fill();ctx.restore();
+    }
+    const spr=emojiSprite(it.def.emoji,Math.round(it.r*1.9));
+    ctx.drawImage(spr,it.x-spr.width/2,yy-spr.height/2);
+  }
+}
+
+function drawParticles(){
+  for(const p of particles){
+    ctx.globalAlpha=Math.max(0,p.life);
+    ctx.fillStyle=p.color;
+    ctx.beginPath();ctx.arc(p.x,p.y,3,0,7);ctx.fill();
+  }
+  ctx.globalAlpha=1;
+}
+
+function drawHUD(){
+  // score (haut gauche)
+  ctx.textAlign="left";ctx.textBaseline="top";
+  ctx.font="bold 22px Trebuchet MS";
+  ctx.fillStyle="rgba(0,0,0,.35)";ctx.fillText("Score : "+currentScore(),14,32);
+  ctx.fillStyle="#fff";ctx.fillText("Score : "+currentScore(),12,30);
+  ctx.font="bold 14px Trebuchet MS";
+  ctx.fillStyle="#EAF6FF";ctx.fillText("Distance : "+Math.floor(distance/10)+" m   ·   Niveau "+level,12,58);
+
+  // jauge de pollution (haut droite)
+  const bw=180,bh=20,bx=W-bw-16,by=30;
+  ctx.fillStyle="rgba(255,255,255,.85)";ctx.font="bold 14px Trebuchet MS";
+  ctx.textAlign="right";ctx.fillText("Pollution",W-16,12);
+  ctx.fillStyle="#1c2c38";ctx.fillRect(bx-2,by-2,bw+4,bh+4);
+  ctx.fillStyle="#3a4a57";ctx.fillRect(bx,by,bw,bh);
+  const pf=pollution/100;
+  const pg=ctx.createLinearGradient(bx,0,bx+bw,0);
+  pg.addColorStop(0,"#FF8A80");pg.addColorStop(1,"#C62828");
+  ctx.fillStyle=pg;ctx.fillRect(bx,by,bw*pf,bh);
+  ctx.strokeStyle="#fff";ctx.lineWidth=2;ctx.strokeRect(bx,by,bw,bh);
+  ctx.fillStyle="#fff";ctx.textAlign="center";ctx.font="bold 13px Trebuchet MS";
+  ctx.fillText(Math.round(pollution)+"%",bx+bw/2,by+3);
+
+  // bandeau "Eau purifiée ! Bonus x2"
+  if(performance.now()<purifiedUntil){
+    ctx.textAlign="center";ctx.font='bold 28px Arial,"Noto Color Emoji"';
+    ctx.fillStyle="rgba(0,0,0,.4)";ctx.fillText("✨ Eau purifiée ! Bonus x2 ! ✨",W/2+2,H/2-40+2);
+    ctx.fillStyle="#FFF59D";ctx.fillText("✨ Eau purifiée ! Bonus x2 ! ✨",W/2,H/2-40);
+  }
+  // indicateurs d'effet en cours
+  ctx.textAlign="center";ctx.font='bold 15px "Noto Color Emoji",Trebuchet MS';
+  if(performance.now()<slowUntil){ ctx.fillStyle="#B9F6CA"; ctx.fillText("🌿 Ralenti !",PLAYER_X,player.y-PLAYER_R-24); }
+  if(performance.now()<fastUntil){ ctx.fillStyle="#FF8A80"; ctx.fillText("☠️ Accélère !",PLAYER_X,player.y-PLAYER_R-24); }
+}
+
+/* ====== ÉCRANS ====== */
+function roundRect(x,y,w,h,r){
+  ctx.beginPath();ctx.moveTo(x+r,y);ctx.arcTo(x+w,y,x+w,y+h,r);ctx.arcTo(x+w,y+h,x,y+h,r);
+  ctx.arcTo(x,y+h,x,y,r);ctx.arcTo(x,y,x+w,y,r);ctx.closePath();
+}
+function drawButton(label,cx,cy,w,h,action){
+  const x=cx-w/2,y=cy-h/2;
+  roundRect(x,y+4,w,h,14);ctx.fillStyle="#B8860B";ctx.fill();
+  roundRect(x,y,w,h,14);ctx.fillStyle="#FFC107";ctx.fill();
+  ctx.fillStyle="#5A3E00";ctx.font="bold 22px Trebuchet MS";ctx.textAlign="center";ctx.textBaseline="middle";
+  ctx.fillText(label,cx,cy);
+  buttons.push({x,y,w,h,action});
+}
+
+function drawStart(){
+  drawBackground();drawPlayer();
+  ctx.fillStyle="rgba(11,60,93,.55)";ctx.fillRect(0,0,W,H);
+  ctx.textAlign="center";ctx.textBaseline="middle";
+  ctx.fillStyle="#fff";ctx.font='bold 40px "Arial Rounded MT Bold","Noto Color Emoji",Trebuchet MS';
+  ctx.fillText("💧 AquaRun",W/2,90);
+  ctx.font="bold 26px Trebuchet MS";ctx.fillText("Sauve la rivière !",W/2,132);
+  ctx.font="18px Trebuchet MS";ctx.fillStyle="#EAF6FF";
+  ctx.fillText("ESPACE ou TAP pour sauter entre surface et fond",W/2,180);
+  ctx.font='17px "Noto Color Emoji",Trebuchet MS';
+  ctx.fillText("🟡🫧💊🌿 attrape les traitements   ·   🛢️🧴☠️🚽 évite les polluants",W/2,210);
+  buttons=[];
+  drawButton("▶  Jouer",W/2,280,200,56,()=>{state="play";reset();});
+}
+
+const FACTS={
+  1:"Chaque année, 8 millions de tonnes de plastique finissent dans les océans.",
+  2:"Les nitrates agricoles sont la 1ère cause de pollution des nappes phréatiques en France.",
+  3:"80% des eaux usées mondiales sont rejetées sans traitement.",
+  4:"Les PFAS, polluants éternels, contaminent déjà l'eau potable de millions de personnes."
+};
+function drawOver(){
+  // garde le décor figé sous le voile
+  drawBackground();drawItems();drawPlayer();
+  ctx.fillStyle="rgba(8,30,48,.78)";ctx.fillRect(0,0,W,H);
+  ctx.textAlign="center";ctx.textBaseline="middle";
+  ctx.fillStyle="#FF8A80";ctx.font='bold 40px Arial,"Noto Color Emoji"';
+  ctx.fillText("💀 Rivière polluée !",W/2,70);
+  ctx.fillStyle="#fff";ctx.font="bold 26px Trebuchet MS";
+  ctx.fillText("Score final : "+currentScore(),W/2,120);
+  ctx.font="18px Trebuchet MS";ctx.fillStyle="#EAF6FF";
+  ctx.fillText("Distance parcourue : "+Math.floor(distance/10)+" m  ·  Niveau "+level,W/2,150);
+  // fait pédagogique (encadré)
+  const fact=FACTS[level]||FACTS[1];
+  ctx.fillStyle="rgba(255,255,255,.12)";roundRect(W/2-330,182,660,70,14);ctx.fill();
+  ctx.fillStyle="#FFF59D";ctx.font='bold 16px Trebuchet MS,"Noto Color Emoji"';
+  wrapText("💡 "+fact,W/2,206,600,22);
+  buttons=[];
+  drawButton("↻  Rejouer",W/2,320,200,56,()=>{state="play";reset();});
+}
+function wrapText(text,cx,cy,maxW,lh){
+  const words=text.split(" ");let line="",y=cy;const lines=[];
+  for(const w of words){
+    const test=line?line+" "+w:w;
+    if(ctx.measureText(test).width>maxW && line){lines.push(line);line=w;}
+    else line=test;
+  }
+  if(line)lines.push(line);
+  const startY=cy-((lines.length-1)*lh)/2;
+  lines.forEach((l,i)=>ctx.fillText(l,cx,startY+i*lh));
+}
+
+/* ====== BOUCLE PRINCIPALE ====== */
+let lastTs=0;
+function loop(ts){
+  if(!lastTs) lastTs=ts||0;
+  let dt=(ts-lastTs)/16.667;          // 1.0 = une frame à 60 fps
+  lastTs=ts;
+  if(!(dt>0)) dt=1;                    // 1ère frame / valeur invalide
+  if(dt>4) dt=4;                       // évite un saut après un gel (onglet en arrière-plan)
+  if(state==="play"){
+    update(dt);
+    drawBackground();drawItems();drawParticles();drawPlayer();drawHUD();
+    if(flashLife>0){ctx.fillStyle=flash;ctx.globalAlpha=Math.max(0,flashLife)/8*0.25;ctx.fillRect(0,0,W,H);ctx.globalAlpha=1;}
+  }else if(state==="start"){
+    drawStart();
+  }else if(state==="over"){
+    drawOver();
+  }
+  requestAnimationFrame(loop);
+}
+// précharge les emoji utilisés par le canvas (le texte force le chargement des
+// bons fichiers woff2 découpés par plage de caractères)
+if(document.fonts&&document.fonts.load){
+  var EMO="🛢️🧴☠️🚽⚫🟡🫧💊🌿💧💀💡✨";
+  ["32px","48px","64px"].forEach(s=>{try{document.fonts.load(s+' "Noto Color Emoji"',EMO);}catch(e){}});
+  // une fois la police prête, on vide le cache pour re-rasteriser proprement les emoji
+  document.fonts.ready.then(function(){ for(var k in emojiCache) delete emojiCache[k]; }).catch(function(){});
+}
+requestAnimationFrame(loop);
+})();
+</script>
+</body>
+</html>

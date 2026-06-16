@@ -1,0 +1,1462 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>L'Aventure de l'Eau — Jeux de révision</title>
+<!-- Police emoji identique sur tous les appareils, hébergée en local (hors-ligne) -->
+<link href="fonts/noto-color-emoji.css" rel="stylesheet">
+<style>
+/* ============================================================
+   L'AVENTURE DE L'EAU — feuille de style
+   Palette « lagon au trésor » : mer profonde, parchemin, or,
+   accents vifs par île. Type ronde et grosse (FALC / SEGPA).
+   ============================================================ */
+:root{
+  --sea-deep:#0B3C5D;
+  --sea:#1565C0;
+  --sky:#4FC3F7;
+  --parch:#F4E4C1;
+  --parch-dk:#E4CE9E;
+  --gold:#FFC107;
+  --gold-dk:#E8A200;
+  --coral:#FF6B6B;
+  --green:#26A69A;
+  --ink:#143642;
+  --paper:#FFFDF6;
+  --shadow:0 8px 0 rgba(0,0,0,.18);
+}
+*{box-sizing:border-box;-webkit-tap-highlight-color:transparent;}
+html,body{margin:0;padding:0;height:100%;}
+body{
+  font-family:"Trebuchet MS","Verdana","Noto Color Emoji",sans-serif;
+  color:var(--ink);
+  background:linear-gradient(180deg,#5EC8F2 0%,#2E9BD6 45%,#1565C0 100%);
+  overflow-x:hidden;
+  font-size:19px;
+  -webkit-font-smoothing:antialiased;
+}
+.wrap{max-width:980px;margin:0 auto;padding:14px;min-height:100%;}
+h1,h2,h3{font-family:"Arial Rounded MT Bold","Trebuchet MS","Noto Color Emoji",sans-serif;margin:0 0 .3em;line-height:1.1;}
+button{font-family:inherit;cursor:pointer;border:none;}
+img{max-width:100%;}
+
+/* --- Boutons gros et tactiles --- */
+.btn{
+  display:inline-flex;align-items:center;gap:.5em;justify-content:center;
+  background:var(--gold);color:#5A3E00;font-weight:bold;font-size:1.25rem;
+  padding:.7em 1.4em;border-radius:18px;border-bottom:5px solid var(--gold-dk);
+  box-shadow:0 4px 0 rgba(0,0,0,.12);transition:transform .08s,filter .15s;
+  text-decoration:none;
+}
+.btn:hover{filter:brightness(1.05);}
+.btn:active{transform:translateY(3px);border-bottom-width:2px;}
+.btn.big{font-size:1.6rem;padding:.8em 1.8em;border-radius:24px;}
+.btn.sea{background:var(--sky);color:#08344F;border-bottom-color:#1E88B5;}
+.btn.coral{background:var(--coral);color:#fff;border-bottom-color:#D94A4A;}
+.btn.ghost{background:rgba(255,255,255,.85);color:var(--sea-deep);border-bottom-color:#9CC;}
+.btn:disabled{filter:grayscale(.6);opacity:.6;cursor:not-allowed;}
+
+/* --- Cartes / panneaux parchemin --- */
+.panel{
+  background:var(--paper);border-radius:28px;padding:22px;
+  box-shadow:0 12px 30px rgba(0,40,80,.28);border:4px solid #fff;
+}
+.parchment{
+  background:
+    radial-gradient(circle at 20% 18%, #fbf0d6 0%, transparent 60%),
+    radial-gradient(circle at 85% 80%, #ecd9ad 0%, transparent 55%),
+    var(--parch);
+  border:6px solid #c8a86a;border-radius:26px;
+  box-shadow:inset 0 0 60px rgba(150,110,40,.25),0 12px 30px rgba(0,40,80,.3);
+}
+
+/* --- HUD haut : prénom + coffre à médailles --- */
+.hud{
+  display:flex;align-items:center;gap:12px;flex-wrap:wrap;
+  background:rgba(255,255,255,.92);border-radius:20px;padding:10px 16px;
+  margin-bottom:14px;box-shadow:0 6px 16px rgba(0,40,80,.2);
+}
+.hud .who{font-weight:bold;font-size:1.15rem;display:flex;align-items:center;gap:8px;}
+.hud .who .av{width:38px;height:38px;}
+.shelf{display:flex;gap:6px;margin-left:auto;flex-wrap:wrap;align-items:center;}
+.shelf .slot{
+  width:40px;height:40px;border-radius:50%;display:grid;place-items:center;
+  font-size:20px;background:#E9EEF2;border:3px dashed #C2CDD6;color:#9fb0bd;
+  filter:grayscale(1);transition:.3s;
+}
+.shelf .slot.has{
+  filter:none;border:3px solid #fff;color:#fff;
+  box-shadow:0 0 0 3px var(--gold),0 4px 10px rgba(0,0,0,.25);
+  animation:pop .5s;
+}
+@keyframes pop{0%{transform:scale(0) rotate(-40deg);}70%{transform:scale(1.3) rotate(8deg);}100%{transform:scale(1);}}
+.hud .progress{font-weight:bold;color:var(--sea-deep);background:#EAF6FF;padding:4px 12px;border-radius:14px;}
+.profbtn{
+  background:none;border:none;font-size:1.1rem;color:var(--sea-deep);
+  opacity:.55;text-decoration:underline;padding:4px 8px;
+}
+
+/* ============ ACCUEIL ============ */
+.welcome{display:flex;flex-direction:column;align-items:center;text-align:center;gap:10px;padding-top:18px;}
+.welcome h1{font-size:2.9rem;color:#fff;text-shadow:0 4px 0 #0A3A5C,0 7px 14px rgba(0,0,0,.3);}
+.welcome .sub{color:#EAF6FF;font-size:1.3rem;margin-bottom:6px;text-shadow:0 2px 4px rgba(0,0,0,.3);}
+.namebox{margin-top:6px;}
+.namebox input{
+  font-family:inherit;font-size:1.5rem;padding:.55em .8em;border-radius:18px;
+  border:4px solid var(--gold);width:min(440px,86vw);text-align:center;
+  box-shadow:0 6px 0 var(--gold-dk);color:var(--ink);
+}
+.resume-list{display:flex;flex-wrap:wrap;gap:8px;justify-content:center;margin-top:8px;}
+.resume-list .pill{
+  background:rgba(255,255,255,.9);border-radius:16px;padding:.4em .9em;font-weight:bold;
+  color:var(--sea-deep);border-bottom:4px solid #9CC;font-size:1.05rem;
+}
+
+/* ============ CARTE AU TRÉSOR ============ */
+.maptitle{text-align:center;color:#fff;text-shadow:0 3px 0 #0A3A5C;font-size:2rem;margin:4px 0 12px;}
+.mapstage{position:relative;width:100%;}
+.mapsvgwrap{position:relative;width:100%;border-radius:26px;overflow:hidden;}
+.island{
+  position:absolute;transform:translate(-50%,-50%);text-align:center;width:128px;cursor:pointer;
+  transition:transform .15s;
+}
+.island:hover{transform:translate(-50%,-50%) scale(1.05);}
+.island .disc{
+  width:92px;height:92px;margin:0 auto;border-radius:50%;display:grid;place-items:center;
+  font-size:46px;background:#fff;box-shadow:0 8px 0 rgba(0,0,0,.18),inset 0 0 0 6px rgba(255,255,255,.7);
+  position:relative;
+}
+.island .label{
+  margin-top:6px;background:rgba(255,255,255,.95);border-radius:12px;padding:3px 8px;
+  font-weight:bold;font-size:.85rem;color:var(--ink);box-shadow:0 3px 6px rgba(0,0,0,.2);
+  display:inline-block;max-width:120px;line-height:1.1;
+}
+.island.locked{filter:grayscale(.85) brightness(.92);cursor:not-allowed;}
+.island.locked .disc::after{content:"🔒";position:absolute;font-size:30px;filter:none;}
+.island.current .disc{animation:bob 1.1s ease-in-out infinite;box-shadow:0 0 0 6px var(--gold),0 10px 0 rgba(0,0,0,.18);}
+.island.current::after{
+  content:"JOUE ICI";position:absolute;left:50%;top:-22px;transform:translateX(-50%);
+  background:var(--coral);color:#fff;font-weight:bold;font-size:.72rem;padding:3px 8px;border-radius:10px;
+  box-shadow:0 3px 6px rgba(0,0,0,.25);white-space:nowrap;animation:bob 1.1s infinite;
+}
+.island.done .disc{box-shadow:0 0 0 6px var(--gold),0 8px 0 rgba(0,0,0,.18);}
+.island.done .flag{position:absolute;top:-14px;right:6px;font-size:26px;animation:wave 1.4s infinite;}
+@keyframes bob{0%,100%{transform:translateY(0);}50%{transform:translateY(-8px);}}
+@keyframes wave{0%,100%{transform:rotate(-8deg);}50%{transform:rotate(8deg);}}
+.dashpath{stroke:#7a5a2a;stroke-width:6;stroke-dasharray:2 16;stroke-linecap:round;fill:none;opacity:.8;
+  stroke-dashoffset:0;animation:march 18s linear infinite;}
+@keyframes march{to{stroke-dashoffset:-360;}}
+
+/* ============ SCÈNE DE JEU ============ */
+.gamehead{display:flex;align-items:center;gap:12px;margin-bottom:12px;}
+.gamehead .ic{width:64px;height:64px;border-radius:50%;display:grid;place-items:center;font-size:34px;background:#fff;box-shadow:var(--shadow);}
+.gamehead h2{color:#fff;text-shadow:0 3px 0 rgba(0,0,0,.25);font-size:1.7rem;}
+.gamehead .pts{margin-left:auto;background:#fff;border-radius:14px;padding:6px 12px;font-weight:bold;}
+.instr{display:flex;gap:12px;align-items:center;background:#EAF6FF;border-left:8px solid var(--sea);
+  border-radius:14px;padding:12px 16px;margin-bottom:16px;font-size:1.15rem;}
+.instr .mas{width:54px;flex:0 0 54px;}
+.gamearea{min-height:300px;}
+
+/* gouttes / tri */
+.cardflow{display:flex;flex-direction:column;align-items:center;gap:18px;}
+.flowcard{
+  background:#fff;border-radius:22px;padding:26px 22px;font-size:1.5rem;text-align:center;
+  width:min(640px,92vw);box-shadow:0 10px 24px rgba(0,40,80,.25);border:4px solid #DCEBF7;
+  min-height:120px;display:grid;place-items:center;
+}
+.sortbtns{display:flex;gap:18px;flex-wrap:wrap;justify-content:center;}
+.basket{
+  flex:1 1 220px;max-width:300px;border-radius:22px;padding:18px;text-align:center;color:#fff;
+  font-weight:bold;font-size:1.3rem;cursor:pointer;box-shadow:0 6px 0 rgba(0,0,0,.18);
+  transition:transform .1s;
+}
+.basket:active{transform:translateY(3px);}
+.basket.b1{background:#42A5F5;border-bottom:5px solid #1E78C2;}
+.basket.b2{background:#26A69A;border-bottom:5px solid #1B7A70;}
+.flowmeter{width:min(640px,92vw);height:18px;background:#cfe3f2;border-radius:10px;overflow:hidden;}
+.flowmeter>i{display:block;height:100%;background:linear-gradient(90deg,#4FC3F7,#1565C0);width:0;transition:width .4s;}
+
+/* memory */
+.memgrid{display:grid;grid-template-columns:repeat(3,1fr);gap:14px;max-width:680px;margin:0 auto;}
+@media(max-width:560px){.memgrid{grid-template-columns:repeat(2,1fr);}}
+.memcard{aspect-ratio:3/4;border-radius:18px;position:relative;cursor:pointer;perspective:800px;}
+.memcard .face{position:absolute;inset:0;border-radius:18px;display:grid;place-items:center;
+  backface-visibility:hidden;transition:transform .4s;padding:10px;text-align:center;font-weight:bold;}
+.memcard .back{background:linear-gradient(135deg,#1565C0,#4FC3F7);color:#fff;font-size:2.4rem;transform:rotateY(0);}
+.memcard .front{background:#fff;color:var(--ink);font-size:1rem;transform:rotateY(180deg);border:4px solid #DCEBF7;}
+.memcard.flip .back{transform:rotateY(180deg);}
+.memcard.flip .front{transform:rotateY(360deg);}
+.memcard.done{animation:matched .5s;}
+.memcard.done .front{border-color:#43A047;background:#E8F5E9;}
+@keyframes matched{0%{transform:scale(1);}50%{transform:scale(1.08);}100%{transform:scale(1);}}
+
+/* ordre usine */
+.orderlist{max-width:760px;margin:0 auto;display:flex;flex-direction:column;gap:8px;}
+.orderrow{display:flex;align-items:center;gap:10px;background:#fff;border-radius:14px;padding:8px 10px;
+  box-shadow:0 4px 10px rgba(0,40,80,.12);border:3px solid #FFE0B2;}
+.orderrow.ok{border-color:#43A047;background:#E8F5E9;}
+.orderrow.bad{animation:shake .4s;border-color:#E53935;}
+@keyframes shake{0%,100%{transform:translateX(0);}25%{transform:translateX(-8px);}75%{transform:translateX(8px);}}
+.orderrow .num{flex:0 0 38px;height:38px;border-radius:50%;background:#FB8C00;color:#fff;font-weight:bold;display:grid;place-items:center;}
+.orderrow .txt{flex:1;font-size:1rem;}
+.orderrow .ic{font-size:1.6rem;flex:0 0 auto;}
+.arrows{display:flex;flex-direction:column;gap:3px;}
+.arrows button{width:34px;height:24px;border-radius:8px;background:#FFE0B2;font-weight:bold;border-bottom:3px solid #E8A24A;}
+.arrows button:active{transform:translateY(2px);}
+
+/* drag & drop usine */
+.drag-handle{font-size:1.5rem;cursor:grab;color:#b0bec5;flex:0 0 auto;padding:0 6px;user-select:none;line-height:1;touch-action:none;}
+.drag-handle:active{cursor:grabbing;}
+.orderrow[draggable]{cursor:default;}
+.orderrow.dragging{opacity:.35;background:#FFF8E7;border-style:dashed;}
+.orderrow.drag-over{border-color:var(--sea);background:#E3F2FD;transform:scale(1.025);box-shadow:0 0 0 3px var(--sky);}
+
+/* boss — vies joueur */
+.player-hpbar{display:flex;gap:4px;align-items:center;font-size:2rem;line-height:1;}
+
+/* boss — effets attaque */
+@keyframes bossShake{0%,100%{transform:translateX(0) rotate(0deg);}15%{transform:translateX(-18px) rotate(-2deg);}35%{transform:translateX(18px) rotate(2deg);}55%{transform:translateX(-12px) rotate(-1deg);}75%{transform:translateX(12px) rotate(1deg);}92%{transform:translateX(-5px);}}
+@keyframes attackPop{0%{transform:translateX(-50%) scale(.2);opacity:1;}55%{transform:translateX(-50%) scale(2);opacity:1;}100%{transform:translateX(-50%) scale(3);opacity:0;}}
+@keyframes screenFlash{0%,100%{opacity:0;}25%{opacity:1;}}
+
+/* château / cloze */
+.clozewrap{display:flex;gap:20px;flex-wrap:wrap;align-items:flex-start;justify-content:center;}
+.towerbox{flex:0 0 230px;text-align:center;}
+.tower-svg{width:210px;}
+.clozetext{flex:1 1 380px;background:#fff;border-radius:18px;padding:18px 20px;font-size:1.25rem;line-height:2.1;
+  box-shadow:0 6px 16px rgba(0,40,80,.15);border:4px solid #E1BEE7;}
+.blank{display:inline-block;min-width:120px;border-bottom:4px dashed #8E24AA;margin:0 4px;text-align:center;
+  color:#8E24AA;font-weight:bold;cursor:pointer;border-radius:8px;padding:0 6px;}
+.blank.filled{border-bottom-style:solid;background:#F3E5F5;}
+.blank.ok{border-color:#43A047;color:#2E7D32;background:#E8F5E9;}
+.wordpool{display:flex;flex-wrap:wrap;gap:10px;justify-content:center;margin-top:16px;}
+.word{background:#8E24AA;color:#fff;font-weight:bold;border-radius:14px;padding:.5em 1em;font-size:1.15rem;
+  box-shadow:0 4px 0 #5E1772;}
+.word.sel{outline:4px solid var(--gold);transform:translateY(-3px);}
+.word.used{opacity:.3;pointer-events:none;}
+
+/* pollueurs */
+.pondwrap{position:relative;}
+.bubblearea{position:relative;height:340px;border-radius:20px;overflow:hidden;
+  background:linear-gradient(180deg,#9CCC65 0%,#7CB342 45%,#558B2F 100%);box-shadow:inset 0 0 40px rgba(0,0,0,.25);}
+.pollbubble{position:absolute;bottom:-90px;left:50%;transform:translateX(-50%);
+  background:#fff;border-radius:50% 50% 48% 52%;padding:14px 16px;min-width:150px;max-width:210px;text-align:center;
+  font-weight:bold;font-size:.98rem;box-shadow:0 6px 14px rgba(0,0,0,.3);cursor:pointer;border:4px solid #C5E1A5;}
+.catbtns{display:flex;gap:10px;flex-wrap:wrap;justify-content:center;margin-top:14px;}
+.catbtn{flex:1 1 150px;max-width:220px;color:#fff;font-weight:bold;border-radius:16px;padding:14px;font-size:1.1rem;box-shadow:0 5px 0 rgba(0,0,0,.2);}
+.catbtn:active{transform:translateY(3px);}
+.cat-agri{background:#FBC02D;color:#5A3E00;border-bottom:5px solid #C99A00;}
+.cat-indus{background:#757575;border-bottom:5px solid #4F4F4F;}
+.cat-dom{background:#42A5F5;border-bottom:5px solid #1E78C2;}
+.sortcols{display:grid;grid-template-columns:repeat(3,1fr);gap:10px;}
+@media(max-width:560px){.sortcols{grid-template-columns:1fr;}}
+.sortcol{border-radius:16px;padding:10px;min-height:90px;color:#fff;}
+.sortcol h4{margin:0 0 6px;text-align:center;}
+.sortchip{background:#fff;color:var(--ink);border-radius:12px;padding:8px 10px;margin:6px 0;font-size:.95rem;
+  box-shadow:0 3px 8px rgba(0,0,0,.15);cursor:pointer;}
+.sortchip.sel{outline:4px solid var(--gold);}
+
+/* boss */
+.bossstage{text-align:center;}
+.monster{font-size:120px;display:inline-block;filter:drop-shadow(0 8px 0 rgba(0,0,0,.2));transition:transform .15s;}
+.monster.hit{animation:hit .4s;}
+@keyframes hit{0%{transform:translateX(0) rotate(0);}25%{transform:translateX(-14px) rotate(-6deg);}75%{transform:translateX(14px) rotate(6deg);}}
+.hpbar{width:min(420px,80vw);height:22px;background:#ffd2d2;border-radius:12px;margin:8px auto 4px;overflow:hidden;border:3px solid #fff;}
+.hpbar>i{display:block;height:100%;background:linear-gradient(90deg,#E53935,#FF8A80);transition:width .4s;}
+.qcard{background:#fff;border-radius:20px;padding:20px;max-width:640px;margin:14px auto 0;box-shadow:0 8px 20px rgba(0,40,80,.2);border:4px solid #B2DFDB;}
+.qcard .q{font-size:1.3rem;font-weight:bold;margin-bottom:14px;}
+.answers{display:flex;flex-direction:column;gap:10px;}
+.ans{background:#E0F2F1;border-radius:14px;padding:12px 16px;font-size:1.15rem;text-align:left;
+  border-bottom:4px solid #80CBC4;color:var(--ink);font-weight:bold;}
+.ans:hover{filter:brightness(.98);}
+.ans.good{background:#C8E6C9;border-bottom-color:#66BB6A;}
+.ans.wrong{background:#FFCDD2;border-bottom-color:#EF9A9A;}
+
+/* résultat */
+.result{text-align:center;display:flex;flex-direction:column;align-items:center;gap:10px;padding-top:10px;}
+.result h2{font-size:2.2rem;color:#fff;text-shadow:0 3px 0 rgba(0,0,0,.25);}
+.bigbadge{width:170px;height:170px;border-radius:50%;display:grid;place-items:center;font-size:84px;
+  background:radial-gradient(circle at 50% 35%,#FFF3C4,#FFC107);box-shadow:0 0 0 10px #fff,0 14px 30px rgba(0,0,0,.3);
+  animation:pop .6s;}
+.scorebig{font-size:2.6rem;font-weight:bold;color:#fff;text-shadow:0 3px 0 rgba(0,0,0,.25);}
+.fb{background:rgba(255,255,255,.95);border-radius:18px;padding:14px 18px;font-size:1.15rem;max-width:560px;}
+
+/* feedback toast */
+.toast{position:fixed;left:50%;bottom:26px;transform:translateX(-50%) translateY(120%);
+  background:var(--ink);color:#fff;padding:14px 22px;border-radius:18px;font-size:1.2rem;font-weight:bold;
+  box-shadow:0 10px 30px rgba(0,0,0,.4);transition:transform .3s;z-index:60;text-align:center;max-width:90vw;}
+.toast.show{transform:translateX(-50%) translateY(0);}
+.toast.good{background:#2E7D32;}
+.toast.bad{background:#C62828;}
+
+/* confetti */
+.confetti{position:fixed;top:-20px;width:12px;height:18px;z-index:70;border-radius:2px;animation:fall linear forwards;}
+@keyframes fall{to{transform:translateY(110vh) rotate(720deg);}}
+
+/* finale / diplôme */
+.diploma{background:var(--paper);border:10px double var(--gold-dk);border-radius:20px;padding:30px;text-align:center;max-width:680px;margin:0 auto;}
+.diploma h2{font-size:2.2rem;color:var(--sea-deep);}
+.diploma .name{font-size:2rem;color:var(--coral);font-family:"Arial Rounded MT Bold",cursive;margin:10px 0;}
+.medrow{display:flex;gap:10px;justify-content:center;flex-wrap:wrap;margin:16px 0;}
+.medrow .m{width:62px;height:62px;border-radius:50%;display:grid;place-items:center;font-size:30px;
+  background:radial-gradient(circle at 50% 35%,#FFF3C4,#FFC107);box-shadow:0 0 0 4px #fff,0 5px 12px rgba(0,0,0,.25);}
+
+/* tableau prof */
+.dash{background:var(--paper);border-radius:20px;padding:18px;}
+.dash table{width:100%;border-collapse:collapse;font-size:.95rem;}
+.dash th,.dash td{padding:8px 10px;border-bottom:1px solid #e3e9ee;text-align:left;}
+.dash th{background:#EAF6FF;color:var(--sea-deep);}
+.minibar{display:inline-block;width:46px;height:10px;background:#e3e9ee;border-radius:6px;overflow:hidden;vertical-align:middle;}
+.minibar>i{display:block;height:100%;background:#43A047;}
+.dashtools{display:flex;gap:8px;flex-wrap:wrap;margin-bottom:12px;}
+.dashtools .btn{font-size:1rem;padding:.5em 1em;}
+.badge-mini{font-size:1.1rem;}
+.syncbadge{font-size:.8rem;padding:3px 10px;border-radius:10px;font-weight:bold;}
+.sync-on{background:#C8E6C9;color:#1B5E20;}
+.sync-off{background:#FFE0B2;color:#7A4A00;}
+
+.center{text-align:center;}
+.mt{margin-top:16px;}
+.hidden{display:none!important;}
+
+/* ===== Affichage plein écran du diplôme (overlay) ===== */
+.diplomaView{
+  position:fixed;inset:0;z-index:120;display:flex;flex-direction:column;align-items:center;
+  justify-content:flex-start;gap:18px;padding:24px 16px;overflow:auto;
+  background:linear-gradient(180deg,#0B3C5D 0%,#1565C0 100%);
+}
+.diploma-sheet{
+  background:
+    radial-gradient(circle at 18% 14%, #fff7e4 0%, transparent 55%),
+    radial-gradient(circle at 84% 86%, #f0dcae 0%, transparent 55%),
+    var(--paper);
+  border:14px double var(--gold-dk);border-radius:18px;padding:38px 34px;text-align:center;
+  width:min(820px,94vw);box-shadow:0 22px 60px rgba(0,0,0,.45);position:relative;
+  -webkit-print-color-adjust:exact;print-color-adjust:exact;color-adjust:exact;
+}
+.diploma-sheet::before{
+  content:"";position:absolute;inset:14px;border:2px solid var(--gold);border-radius:10px;pointer-events:none;opacity:.55;
+}
+.diploma-sheet .seal{font-size:64px;}
+.diploma-sheet h2{font-size:2.3rem;color:var(--sea-deep);margin:.2em 0;}
+.diploma-sheet .name{font-size:2.4rem;color:var(--coral);font-weight:bold;margin:14px 0;}
+.diploma-sheet .sub{font-size:1.2rem;color:var(--ink);}
+.diploma-sheet .medrow .m{width:66px;height:66px;font-size:32px;
+  -webkit-print-color-adjust:exact;print-color-adjust:exact;}
+.diploma-sheet .foot{margin-top:18px;color:#7a5a2a;font-size:.95rem;}
+
+/* ===== Déblocage AquaRun (cadenas + fenêtre) ===== */
+.unlock-overlay{
+  position:fixed;inset:0;z-index:150;display:flex;flex-direction:column;
+  align-items:center;justify-content:center;gap:24px;
+  background:rgba(8,30,48,.72);backdrop-filter:blur(2px);-webkit-backdrop-filter:blur(2px);
+  animation:fadeIn .3s ease;
+}
+@keyframes fadeIn{from{opacity:0}to{opacity:1}}
+.unlock-lock{
+  font-size:clamp(96px,24vw,180px);line-height:1;
+  filter:drop-shadow(0 10px 0 rgba(0,0,0,.3));
+  animation:lockShake .5s ease-in-out 0s 3;
+}
+.unlock-lock.opened{animation:lockPop .55s ease;}
+@keyframes lockShake{
+  0%,100%{transform:rotate(0) translateX(0);}
+  20%{transform:rotate(-16deg) translateX(-6px) scale(1.05);}
+  40%{transform:rotate(13deg) translateX(6px);}
+  60%{transform:rotate(-11deg) translateX(-4px);}
+  80%{transform:rotate(9deg) translateX(4px);}
+}
+@keyframes lockPop{0%{transform:scale(.6) rotate(-8deg);}55%{transform:scale(1.4) rotate(4deg);}100%{transform:scale(1) rotate(0);}}
+.unlock-card{
+  background:var(--paper);border-radius:26px;padding:26px 30px;text-align:center;
+  max-width:min(460px,90vw);box-shadow:0 20px 55px rgba(0,0,0,.5);border:5px solid #fff;
+  transform:scale(.6);opacity:0;transition:transform .45s cubic-bezier(.2,1.5,.4,1),opacity .35s;
+}
+.unlock-card.show{transform:scale(1);opacity:1;}
+.unlock-card h2{color:var(--sea-deep);font-size:1.7rem;margin:6px 0 18px;}
+.unlock-card .btn.big{font-size:1.7rem;padding:.7em 2em;}
+.unlock-close{background:none;border:none;color:#7a8a96;text-decoration:underline;
+  font-family:inherit;font-size:1rem;cursor:pointer;margin-top:12px;}
+@media(max-width:600px){ .unlock-card h2{font-size:1.35rem;} .unlock-card .btn.big{font-size:1.4rem;} }
+
+@media print{
+  body{background:#fff;}
+  .noprint{display:none!important;}
+  /* impose l'impression des fonds et couleurs (sinon diplôme « dégradé ») */
+  *{-webkit-print-color-adjust:exact!important;print-color-adjust:exact!important;color-adjust:exact!important;}
+  .diplomaView{position:static;background:#fff!important;padding:0;}
+  .diploma-sheet{box-shadow:none;width:100%;border-color:var(--gold-dk);}
+}
+
+/* ============================================================
+   ADAPTATION SMARTPHONE
+   ============================================================ */
+@media (max-width:600px){
+  body{font-size:16px;}
+  .wrap{padding:8px;}
+
+  /* Accueil */
+  .welcome{padding-top:8px;gap:8px;}
+  .welcome h1{font-size:2rem;}
+  .welcome .sub{font-size:1.05rem;}
+  .namebox input{font-size:1.1rem;width:min(280px,78vw);padding:.5em .7em;}
+  .panel{padding:16px;border-radius:20px;}
+  .resume-list .pill{font-size:.95rem;}
+
+  /* Boutons */
+  .btn{font-size:1.05rem;padding:.6em 1.1em;}
+  .btn.big{font-size:1.2rem;padding:.7em 1.2em;}
+
+  /* HUD */
+  .hud{padding:8px 10px;gap:8px;}
+  .hud .who{font-size:1rem;}
+  .hud .who .av{width:30px;height:30px;}
+  .hud .progress{font-size:.82rem;padding:3px 8px;}
+  .shelf{gap:4px;}
+  .shelf .slot{width:30px;height:30px;font-size:15px;border-width:2px;}
+  .profbtn{font-size:.92rem;}
+
+  /* Carte au trésor */
+  .maptitle{font-size:1.4rem;margin:2px 0 8px;}
+  .mapsvgwrap{overflow:visible;}            /* évite de couper les étiquettes des îles */
+  .island{width:72px;}
+  .island .disc{width:50px;height:50px;font-size:26px;
+    box-shadow:0 5px 0 rgba(0,0,0,.18),inset 0 0 0 4px rgba(255,255,255,.7);}
+  .island .label{font-size:.56rem;max-width:72px;padding:2px 5px;border-radius:8px;}
+  .island.current::after{font-size:.52rem;top:-15px;padding:2px 5px;}
+  .island.locked .disc::after{font-size:20px;}
+  .island.done .flag{font-size:18px;top:-9px;right:2px;}
+
+  /* Scène de jeu */
+  .gamehead{gap:8px;margin-bottom:8px;}
+  .gamehead .ic{width:46px;height:46px;font-size:24px;}
+  .gamehead h2{font-size:1.2rem;}
+  .gamehead .pts{font-size:.85rem;padding:4px 8px;}
+  .instr{font-size:1rem;padding:10px 12px;gap:8px;}
+  .instr .mas{width:40px;flex-basis:40px;}
+
+  /* Tri des gouttes */
+  .flowcard{font-size:1.1rem;padding:16px 12px;min-height:84px;}
+  .basket{font-size:1rem;padding:13px;flex-basis:130px;}
+  .sortbtns{gap:12px;}
+
+  /* Memory survie */
+  .memcard .back{font-size:1.9rem;}
+  .memcard .front{font-size:.85rem;}
+
+  /* Ordre / usine */
+  .orderrow{padding:7px 8px;gap:8px;}
+  .orderrow .num{flex-basis:30px;height:30px;font-size:.9rem;}
+  .orderrow .txt{font-size:.85rem;}
+  .orderrow .ic{font-size:1.3rem;}
+  .drag-handle{font-size:1.3rem;padding:0 3px;}
+
+  /* Château / cloze */
+  .clozewrap{gap:12px;}
+  .towerbox{flex:1 1 auto;width:100%;}
+  .tower-svg{width:140px;}
+  .clozetext{font-size:1.02rem;line-height:1.9;padding:14px;}
+  .blank{min-width:84px;}
+  .word{font-size:1.02rem;padding:.45em .8em;}
+
+  /* Pollueurs */
+  .bubblearea{height:270px;}
+  .pollbubble{font-size:.88rem;min-width:120px;max-width:170px;padding:12px;}
+  .catbtn{font-size:1rem;padding:12px;flex-basis:100px;}
+  .sortcol h4{font-size:.95rem;}
+  .sortchip{font-size:.85rem;}
+
+  /* Boss */
+  .monster{font-size:84px;}
+  .player-hpbar{font-size:1.6rem;}
+  .qcard{padding:16px;}
+  .qcard .q{font-size:1.1rem;}
+  .ans{font-size:1.05rem;padding:10px 12px;}
+
+  /* Résultat */
+  .result h2{font-size:1.7rem;}
+  .bigbadge{width:130px;height:130px;font-size:64px;}
+  .scorebig{font-size:2rem;}
+  .fb{font-size:1.05rem;padding:12px 14px;}
+
+  /* Diplôme (page + plein écran) */
+  .diploma{padding:20px;}
+  .diploma h2{font-size:1.5rem;}
+  .diploma .name{font-size:1.6rem;}
+  .medrow .m{width:50px;height:50px;font-size:24px;}
+  .diplomaView{padding:16px 10px;}
+  .diploma-sheet{padding:26px 18px;border-width:10px;}
+  .diploma-sheet .seal{font-size:48px;}
+  .diploma-sheet h2{font-size:1.45rem;}
+  .diploma-sheet .name{font-size:1.7rem;}
+  .diploma-sheet .sub{font-size:1.02rem;}
+
+  /* Tableau enseignant */
+  .dash{padding:12px;}
+  .dash table{font-size:.82rem;}
+  .dash th,.dash td{padding:6px 7px;}
+  .dashtools{gap:6px;}
+  .dashtools .btn{font-size:.82rem;padding:.4em .7em;}
+}
+
+@media (max-width:380px){
+  .welcome h1{font-size:1.7rem;}
+  .island .disc{width:44px;height:44px;font-size:22px;}
+  .island .label{font-size:.5rem;max-width:62px;}
+  .monster{font-size:70px;}
+  .bigbadge{width:110px;height:110px;font-size:54px;}
+}
+</style>
+</head>
+<body>
+<div class="wrap" id="app"></div>
+<div class="toast" id="toast"></div>
+
+<script>
+/* ============================================================
+   CONFIGURATION  —  À PERSONNALISER PAR L'ENSEIGNANT
+   ============================================================ */
+const CONFIG = {
+  // Code pour ouvrir le tableau de bord enseignant :
+  teacherPIN: "3535",
+
+  // Code de la classe / session. Mets un code différent par classe
+  // si tu utilises le même fichier pour plusieurs groupes.
+  sessionCode: "segpa-eau-5e",
+
+  // --- SUIVI EN DIRECT MULTI-POSTES ---
+  // Config Firebase (Realtime Database) pour le suivi en direct sur tous les postes.
+  firebase: {
+    apiKey: "AIzaSyBsuYVoSkIZfA9NH3IYVQjzBh6BL5o2tT0",
+    authDomain: "revisions-eau2.firebaseapp.com",
+    databaseURL: "https://revisions-eau2-default-rtdb.europe-west1.firebasedatabase.app",
+    projectId: "revisions-eau2",
+    storageBucket: "revisions-eau2.firebasestorage.app",
+    messagingSenderId: "906876534878",
+    appId: "1:906876534878:web:cfa931ea310166f35bf4cf"
+  }
+};
+
+/* ============================================================
+   CONTENU PÉDAGOGIQUE (d'après la séance « L'eau et sa gestion »)
+   ============================================================ */
+const STAGES = [
+  { id:"tri",       title:"Île du Tri",            emoji:"🏝️", accent:"#1E88E5", light:"#BBDEFB", type:"sort",      badge:{emoji:"💧", name:"Goutte Maligne"},      x:14, y:78 },
+  { id:"survie",    title:"Volcan de la Survie",   emoji:"🌋", accent:"#43A047", light:"#C8E6C9", type:"memory",    badge:{emoji:"🔥", name:"As de la Survie"},      x:36, y:34 },
+  { id:"usine",     title:"Cité de l'Usine",       emoji:"🏭", accent:"#FB8C00", light:"#FFE0B2", type:"order",     badge:{emoji:"⚙️", name:"Ingénieur de l'Eau"},    x:60, y:70 },
+  { id:"chateau",   title:"Tour du Château",       emoji:"🏰", accent:"#8E24AA", light:"#E1BEE7", type:"cloze",     badge:{emoji:"🏰", name:"Gardien du Château"},   x:50, y:20 },
+  { id:"pollueurs", title:"Marais des Pollueurs",  emoji:"🐸", accent:"#E53935", light:"#FFCDD2", type:"pollution", badge:{emoji:"🕵️", name:"Détective Pollution"},  x:78, y:40 },
+  { id:"heros",     title:"Temple des Héros",      emoji:"⭐", accent:"#00897B", light:"#B2DFDB", type:"boss",      badge:{emoji:"🏆", name:"Héros de l'Eau"},       x:88, y:80 }
+];
+
+const DATA = {
+  tri:[
+    { t:"L'eau d'un torrent de montagne, transparente et fraîche, mais jamais testée en laboratoire.", a:"propre" },
+    { t:"L'eau distribuée par le réseau public d'une ville, analysée chaque semaine par les services de l'État.", a:"potable" },
+    { t:"De l'eau de pluie récupérée dans un tonneau : limpide, sans trace visible de saleté.", a:"propre" },
+    { t:"Une eau en bouteille avec une composition chimique détaillée sur l'étiquette et un numéro de lot.", a:"potable" },
+    { t:"L'eau d'un puits de campagne que les villageois utilisent depuis des générations pour cuisiner.", a:"propre" },
+    { t:"L'eau d'un lac cristallin dans un parc naturel, sans aucun contrôle sanitaire.", a:"propre" },
+    { t:"L'eau de la fontaine de la mairie avec le panneau « eau contrôlée — conforme aux normes ».", a:"potable" },
+    { t:"De l'eau filtrée par du sable et des cailloux lors d'une randonnée : elle paraît claire.", a:"propre" },
+    { t:"L'eau du robinet de la cantine scolaire, fournie par les services communaux.", a:"potable" },
+    { t:"Une eau traitée et certifiée sans danger par un laboratoire agréé par l'État.", a:"potable" }
+  ],
+  // memory : 3 paires technique <-> description
+  survie:{
+    pairs:[
+      { k:"Désinfection solaire", v:"☀️ Laisser la bouteille transparente au soleil pendant 6 h minimum." },
+      { k:"Ébullition",           v:"🔥 Faire bouillir l'eau pendant 3 minutes minimum." },
+      { k:"Au chlore",            v:"💊 Ajouter du chlore et attendre de 30 min à 2 h." }
+    ],
+    bonus:[
+      { q:"Quelle technique est la PLUS efficace ?",
+        options:["La désinfection solaire","L'ébullition","La désinfection au chlore"], correct:1,
+        hint:"En faisant bouillir l'eau, on tue le plus de microbes !" },
+      { q:"Vrai ou Faux : ces 3 techniques enlèvent les produits chimiques de l'eau.",
+        options:["Vrai","Faux"], correct:1,
+        hint:"Faux : elles tuent les microbes, mais PAS les polluants chimiques." }
+    ]
+  },
+  // ordre : 9 étapes dans le bon ordre
+  usine:[
+    { ic:"🚰", t:"Prélèvement : l'eau est pompée (nappe, lac ou rivière)." },
+    { ic:"🧹", t:"Dégrillage et tamisage : on retire les gros puis les petits déchets." },
+    { ic:"🌀", t:"Floculation : un produit forme des flocons qui tombent au fond." },
+    { ic:"⏳", t:"Filtration sur sable : l'eau ressort claire." },
+    { ic:"💨", t:"Ozonation : un gaz, l'ozone, détruit bactéries et virus." },
+    { ic:"⬛", t:"Filtration sur charbon actif : plus d'odeur ni de couleur." },
+    { ic:"💊", t:"Chloration : du chlore protège l'eau pendant le transport." },
+    { ic:"🏰", t:"Stockage : l'eau attend dans des réservoirs ou châteaux d'eau." },
+    { ic:"🏠", t:"Distribution : l'eau arrive enfin chez les habitants." }
+  ],
+  chateau:{
+    // segments de phrase ; null = trou à remplir (ordre des mots)
+    parts:[
+      "Le château d'eau permet le ", null,
+      " et la ", null,
+      " d'eau ", null,
+      " aux ", null,
+      " environnantes. L'eau monte grâce à des ", null,
+      " et redescend grâce à la ", null, "."
+    ],
+    answers:["stockage","distribution","potable","habitations","pompes","gravité"]
+  },
+  pollueurs:{
+    sources:[
+      { t:"Des pesticides sur les cultures coulent vers la rivière.", c:"agri" },
+      { t:"Une usine rejette des produits chimiques dans la rivière.", c:"indus" },
+      { t:"Des produits ménagers versés dans l'évier de la cuisine.", c:"dom" },
+      { t:"Du lisier (déjections d'animaux) épandu sur les champs.", c:"agri" },
+      { t:"De l'huile de vidange (voiture) jetée dans les égouts.", c:"dom" },
+      { t:"Une usine déverse des métaux lourds dans une nappe phréatique.", c:"indus" },
+      { t:"Des engrais lessivés par la pluie coulent vers les cours d'eau.", c:"agri" },
+      { t:"Des médicaments périmés jetés dans les toilettes par des particuliers.", c:"dom" },
+      { t:"Une centrale thermique rejette de l'eau très chaude dans la rivière.", c:"indus" },
+      { t:"Des peintures déversées dans les caniveaux devant une maison.", c:"dom" },
+      { t:"Des déchets plastiques jetés dans une décharge sauvage.", c:"dom" },
+      { t:"Une usine agroalimentaire rejette ses eaux de lavage sans traitement.", c:"indus" },
+      { t:"De la lessive utilisée en trop grand quantité.", c:"dom" }
+    ],
+    consequences:[
+      { t:"Des algues envahissent les rivières.", c:"env" },
+      { t:"Des personnes tombent malades.", c:"sante" },
+      { t:"Traiter l'eau polluée coûte plus cher.", c:"eco" },
+      { t:"Les poissons meurent.", c:"env" },
+      { t:"En 2015, 1,8 million de morts à cause de l'eau sale.", c:"sante" },
+      { t:"Des milliards d'euros pour soigner les malades.", c:"eco" }
+    ]
+  },
+  heros:[
+    { q:"Eau propre et eau potable — laquelle de ces affirmations est VRAIE ?",
+      options:["Toute eau propre est aussi potable","L'eau peut être propre sans être potable","L'eau potable n'est pas forcément propre","Elles sont identiques"],
+      correct:1, hint:"Une eau peut sembler propre (sans saletés visibles) mais contenir des microbes : elle n'est pas potable pour autant." },
+    { q:"Quelle est la PREMIÈRE étape d'une usine de potabilisation ?",
+      options:["La chloration","La floculation","Le prélèvement","L'ozonation"],
+      correct:2, hint:"On commence par pomper l'eau depuis sa source : nappe phréatique, lac ou rivière." },
+    { q:"À quelle étape retire-t-on les gros déchets (branches, plastiques) ?",
+      options:["La floculation","Le dégrillage et tamisage","La filtration sur sable","L'ozonation"],
+      correct:1, hint:"Le dégrillage et le tamisage sont les premières opérations de nettoyage dans l'usine." },
+    { q:"Lors de la floculation, que se passe-t-il dans l'eau ?",
+      options:["On y ajoute du chlore","Un produit forme des flocons qui entraînent les impuretés vers le fond","On la filtre sur du sable","On la désinfecte aux UV"],
+      correct:1, hint:"Un coagulant crée des flocons qui agglomèrent les impuretés et les font tomber au fond du bassin." },
+    { q:"Quel gaz est utilisé lors de l'ozonation ?",
+      options:["Le chlore","L'oxygène","Le dioxyde de carbone","L'ozone"],
+      correct:3, hint:"L'ozone (O₃) est un gaz puissant qui détruit bactéries et virus sans laisser de résidu chimique dans l'eau." },
+    { q:"À quoi sert le filtre à charbon actif dans l'usine ?",
+      options:["Tuer les microbes","Pomper l'eau en hauteur","Absorber les particules, enlever couleur et mauvaises odeurs","Former des flocons"],
+      correct:2, hint:"Le charbon actif absorbe les substances qui donnent une couleur ou une odeur indésirable à l'eau." },
+    { q:"Pourquoi ajoute-t-on du chlore en FIN de traitement ?",
+      options:["Pour améliorer le goût","Pour protéger l'eau des microbes pendant tout le transport","Pour la colorer légèrement","Pour remplacer l'ozonation"],
+      correct:1, hint:"Le chlore agit comme un désinfectant de longue durée dans les canalisations jusqu'aux robinets." },
+    { q:"Comment l'eau monte-t-elle jusqu'en haut d'un château d'eau ?",
+      options:["Par la gravité naturelle","Grâce à des pompes","Par l'ozonation","Par la pression des rivières"],
+      correct:1, hint:"Des pompes propulsent l'eau vers le haut. C'est ensuite la gravité qui la fait redescendre vers les maisons." },
+    { q:"Comment l'eau redescend-elle du château d'eau vers les maisons ?",
+      options:["Par des pompes supplémentaires","Par évaporation","Grâce à la gravité","Par chloration"],
+      correct:2, hint:"Une fois stockée en hauteur, l'eau redescend naturellement grâce à la force de gravité." },
+    { q:"Quelle technique de désinfection de survie est la PLUS efficace ?",
+      options:["La désinfection solaire (SODIS)","L'ajout de chlore","L'ébullition","La filtration sur tissu"],
+      correct:2, hint:"Faire bouillir l'eau 3 minutes minimum est la technique la plus sûre pour éliminer la grande majorité des microbes." },
+    { q:"Vrai ou Faux : l'ébullition élimine aussi les polluants chimiques de l'eau.",
+      options:["Vrai","Faux"],
+      correct:1, hint:"Faux ! L'ébullition tue les microbes, mais les produits chimiques (pesticides, métaux lourds) restent dans l'eau." },
+    { q:"Quelle est la durée MINIMALE pour la désinfection solaire (SODIS) ?",
+      options:["1 heure","3 heures","6 heures","12 heures"],
+      correct:2, hint:"6 heures de soleil direct sont nécessaires pour que les rayons UV détruisent suffisamment de microbes dans la bouteille." },
+    { q:"Laquelle de ces pollutions est d'origine AGRICOLE ?",
+      options:["De l'huile de vidange dans les égouts","Du lisier épandu sur des champs qui ruisselle vers la rivière","Des produits ménagers dans l'évier","Des métaux lourds rejetés par une usine"],
+      correct:1, hint:"Le lisier (déjections d'animaux d'élevage) est une pollution agricole qui peut contaminer les nappes phréatiques." },
+    { q:"Quelle conséquence de la pollution est d'ordre ENVIRONNEMENTAL ?",
+      options:["Des personnes tombent malades","Des algues envahissent les rivières et les poissons meurent","Le traitement de l'eau coûte plus cher","Des milliards d'euros dépensés pour soigner des malades"],
+      correct:1, hint:"L'invasion d'algues et la mort des poissons sont des conséquences directes de la pollution sur l'environnement." },
+    { q:"En 2015, combien de décès dans le monde étaient liés à l'eau insalubre ?",
+      options:["180 000","18 000","1,8 million","18 millions"],
+      correct:2, hint:"Environ 1,8 million de personnes sont mortes en 2015 faute d'accès à une eau saine — soit l'équivalent de la ville de Paris." },
+    { q:"À quoi sert une station d'épuration ?",
+      options:["Rendre l'eau de pluie potable","Traiter les eaux usées avant de les rejeter dans la nature","Stocker l'eau potable pour les habitants","Distribuer l'eau dans les maisons"],
+      correct:1, hint:"La station d'épuration nettoie les eaux usées (toilettes, cuisine, industrie) pour éviter de polluer rivières et nappes phréatiques." },
+    { q:"Quel geste ÉCONOMISE réellement de l'eau au quotidien ?",
+      options:["Laisser couler le robinet en se brossant les dents","Arroser le jardin à midi en plein soleil","Fermer le robinet dès qu'on n'en a pas besoin","Prendre un bain chaque soir"],
+      correct:2, hint:"Fermer le robinet quand on ne s'en sert pas (brossage de dents, savonnage) évite un gaspillage considérable." },
+    { q:"Quelle affirmation sur les réserves d'eau douce est correcte ?",
+      options:["Elles représentent plus de 50% de l'eau sur Terre","Elles sont illimitées","Elles sont rares et précieuses à préserver","Elles viennent uniquement des océans"],
+      correct:2, hint:"Seul 2,5% de l'eau sur Terre est douce, et la majorité est gelée ou inaccessible. C'est une ressource très précieuse." },
+    { q:"Que doit-on faire des médicaments périmés pour protéger l'eau ?",
+      options:["Les jeter dans les toilettes","Les mettre à la poubelle ordinaire","Les rapporter à la pharmacie","Les enterrer dans le jardin"],
+      correct:2, hint:"Les médicaments contiennent des molécules chimiques qui polluent l'eau. La pharmacie les récupère pour un traitement adapté." },
+    { q:"Où l'eau traitée est-elle stockée avant d'être distribuée dans les maisons ?",
+      options:["Directement dans les canalisations","Dans des lacs artificiels","Dans des réservoirs ou châteaux d'eau","Dans les usines de traitement elles-mêmes"],
+      correct:2, hint:"Après tous les traitements, l'eau est stockée dans des réservoirs souterrains ou des châteaux d'eau avant distribution." }
+  ]
+};
+const CAT_LABELS = { agri:"Agricole", indus:"Industrielle", dom:"Domestique", env:"Environnement", sante:"Santé", eco:"Économique" };
+
+/* ============================================================
+   STOCKAGE SÛR (marche partout, même hors-ligne)
+   ============================================================ */
+const Store = (()=>{ let mem={},ok=false;
+  try{localStorage.setItem("__t","1");localStorage.removeItem("__t");ok=true;}catch(e){ok=false;}
+  return{
+    get(k){try{return ok?localStorage.getItem(k):(k in mem?mem[k]:null);}catch(e){return k in mem?mem[k]:null;}},
+    set(k,v){try{ok?localStorage.setItem(k,v):(mem[k]=v);}catch(e){mem[k]=v;}},
+    del(k){try{ok?localStorage.removeItem(k):delete mem[k];}catch(e){delete mem[k];}}
+  };
+})();
+const safeKey = n => (n||"").toLowerCase().normalize("NFD").replace(/[\u0300-\u036f]/g,"").replace(/[^a-z0-9]/g,"_").slice(0,40) || "anon";
+const localKey = n => `eauquest_${CONFIG.sessionCode}_s_${safeKey(n)}`;
+const regKey   = ()=> `eauquest_${CONFIG.sessionCode}_reg`;
+
+/* ============================================================
+   SYNCHRONISATION (local par défaut, Firebase si configuré)
+   ============================================================ */
+const Sync = {
+  mode:"local", db:null,
+  async init(){
+    if(CONFIG.firebase && CONFIG.firebase.databaseURL){
+      try{
+        await this._load("https://www.gstatic.com/firebasejs/10.12.2/firebase-app-compat.js");
+        await this._load("https://www.gstatic.com/firebasejs/10.12.2/firebase-database-compat.js");
+        firebase.initializeApp(CONFIG.firebase);
+        this.db=firebase.database();
+        this.mode="firebase";
+      }catch(e){ this.mode="local"; }
+    }
+  },
+  _load(src){return new Promise((res,rej)=>{const s=document.createElement("script");s.src=src;s.onload=res;s.onerror=rej;document.head.appendChild(s);});},
+  _path(n){return `eauquest/${CONFIG.sessionCode}/students/${safeKey(n)}`;},
+  save(student){
+    Store.set(localKey(student.name),JSON.stringify(student));
+    try{const reg=JSON.parse(Store.get(regKey())||"[]");if(!reg.includes(student.name)){reg.push(student.name);Store.set(regKey(),JSON.stringify(reg));}}catch(e){}
+    if(this.mode==="firebase"){try{this.db.ref(this._path(student.name)).set(student);}catch(e){}}
+  },
+  loadLocal(n){const r=Store.get(localKey(n));return r?JSON.parse(r):null;},
+  async getAll(){
+    if(this.mode==="firebase"){
+      try{const snap=await this.db.ref(`eauquest/${CONFIG.sessionCode}/students`).get();return Object.values(snap.val()||{});}catch(e){return this._allLocal();}
+    }
+    return this._allLocal();
+  },
+  _allLocal(){try{const reg=JSON.parse(Store.get(regKey())||"[]");return reg.map(n=>this.loadLocal(n)).filter(Boolean);}catch(e){return [];}},
+  onAll(cb){
+    if(this.mode==="firebase"){try{this.db.ref(`eauquest/${CONFIG.sessionCode}/students`).on("value",s=>cb(Object.values(s.val()||{})));return;}catch(e){}}
+    this.getAll().then(cb);
+  },
+  reset(name){ Store.del(localKey(name)); try{const reg=JSON.parse(Store.get(regKey())||"[]").filter(x=>x!==name);Store.set(regKey(),JSON.stringify(reg));}catch(e){} if(this.mode==="firebase"){try{this.db.ref(this._path(name)).remove();}catch(e){}} }
+};
+
+/* ============================================================
+   ÉTAT DE L'ÉLÈVE
+   ============================================================ */
+let student=null;
+function newStudent(name){
+  return { name:name.trim(), nameKey:safeKey(name), startedAt:Date.now(), lastActive:Date.now(),
+           current:0, stages:{}, badges:[] };
+}
+function totalPct(s){ let sum=0; STAGES.forEach(st=>{ sum += (s.stages?.[st.id]?.best||0); }); return Math.round(sum/STAGES.length); }
+function persist(){ if(!student)return; student.lastActive=Date.now(); Sync.save(student); }
+
+/* ============================================================
+   OUTILS UI
+   ============================================================ */
+const app=document.getElementById("app");
+const toast=document.getElementById("toast");
+let toastTimer=null;
+function showToast(msg,kind=""){toast.className="toast show "+kind;toast.textContent=msg;clearTimeout(toastTimer);toastTimer=setTimeout(()=>toast.className="toast",1800);}
+function el(html){const d=document.createElement("div");d.innerHTML=html.trim();return d.firstChild;}
+function confetti(){const colors=["#FFC107","#FF6B6B","#4FC3F7","#26A69A","#8E24AA","#43A047"];for(let i=0;i<90;i++){const c=document.createElement("div");c.className="confetti";c.style.left=Math.random()*100+"vw";c.style.background=colors[i%colors.length];c.style.animationDuration=(2+Math.random()*2)+"s";c.style.animationDelay=Math.random()*0.6+"s";document.body.appendChild(c);setTimeout(()=>c.remove(),4600);}}
+
+/* mascotte goutte d'eau */
+function droplet(size=54){return `<svg viewBox="0 0 100 120" width="${size}"><path d="M50 4 C50 4 90 56 90 82 a40 40 0 1 1 -80 0 C10 56 50 4 50 4Z" fill="#4FC3F7" stroke="#1565C0" stroke-width="4"/><ellipse cx="38" cy="62" rx="9" ry="11" fill="#fff"/><ellipse cx="62" cy="62" rx="9" ry="11" fill="#fff"/><circle cx="40" cy="64" r="4.5" fill="#143642"/><circle cx="64" cy="64" r="4.5" fill="#143642"/><path d="M40 86 q10 10 22 0" stroke="#143642" stroke-width="4" fill="none" stroke-linecap="round"/><ellipse cx="28" cy="80" rx="6" ry="4" fill="#FF9E9E" opacity=".7"/><ellipse cx="72" cy="80" rx="6" ry="4" fill="#FF9E9E" opacity=".7"/></svg>`;}
+
+function hud(){
+  const shelf = STAGES.map(st=>{
+    const has=student.badges.includes(st.id);
+    return `<div class="slot ${has?'has':''}" title="${st.badge.name}" style="${has?`background:${st.accent}`:''}">${has?st.badge.emoji:st.emoji}</div>`;
+  }).join("");
+  return `<div class="hud noprint">
+    <div class="who"><span class="av">${droplet(34)}</span> ${escapeHtml(student.name)}</div>
+    <div class="progress">${student.badges.length} / ${STAGES.length} médailles · ${totalPct(student)}%</div>
+    <div class="shelf">${shelf}</div>
+    <button class="profbtn" onclick="openTeacher()">👩‍🏫 Espace prof</button>
+  </div>`;
+}
+function escapeHtml(s){return (s||"").replace(/[&<>"']/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[c]));}
+
+/* ============================================================
+   SCÈNE : ACCUEIL
+   ============================================================ */
+function renderWelcome(){
+  let reg=[];try{reg=JSON.parse(Store.get(regKey())||"[]");}catch(e){}
+  const resume = reg.length? `<div class="mt"><div style="color:#EAF6FF;margin-bottom:6px;">Tu as déjà commencé ? Clique sur ton prénom :</div>
+    <div class="resume-list">${reg.map(n=>`<button class="pill" onclick="resumeStudent('${escapeHtml(n).replace(/'/g,"\\'")}')">${escapeHtml(n)}</button>`).join("")}</div></div>`:"";
+  app.innerHTML = `<div class="welcome">
+    <div style="animation:bob 2s ease-in-out infinite">${droplet(120)}</div>
+    <h1>L'Aventure de l'Eau</h1>
+    <div class="sub">6 îles, 6 jeux, 6 médailles à gagner&nbsp;!</div>
+    <div class="panel" style="max-width:560px;width:100%;">
+      <h3 style="color:var(--sea-deep)">Écris ton prénom pour commencer</h3>
+      <div class="namebox"><input id="nameInput" maxlength="24" placeholder="Mon prénom..." autocomplete="off"></div>
+      <div class="mt"><button class="btn big" onclick="startGame()">🚀 C'est parti&nbsp;!</button></div>
+      ${resume}
+    </div>
+    <button class="profbtn" onclick="openTeacher()">👩‍🏫 Espace prof</button>
+  </div>`;
+  const inp=document.getElementById("nameInput");
+  inp.focus();
+  inp.addEventListener("keydown",e=>{if(e.key==="Enter")startGame();});
+}
+function startGame(){
+  const v=document.getElementById("nameInput").value.trim();
+  if(v.length<2){showToast("Écris ton prénom 🙂","bad");return;}
+  const existing=Sync.loadLocal(v);
+  student = existing || newStudent(v);
+  persist();
+  renderMap();
+}
+function resumeStudent(n){ student=Sync.loadLocal(n)||newStudent(n); renderMap(); }
+
+/* ============================================================
+   SCÈNE : CARTE AU TRÉSOR
+   ============================================================ */
+function stageState(i){
+  const st=STAGES[i]; const done=student.stages[st.id]?.completed;
+  if(done) return "done";
+  if(i===student.current) return "current";
+  if(i<student.current) return "current"; // sécurité
+  return "locked";
+}
+function renderMap(){
+  // chemin reliant les îles dans l'ordre
+  const pts=STAGES.map(s=>`${s.x*8.6},${s.y*4.0}`);
+  let d=`M ${pts[0]}`; for(let i=1;i<pts.length;i++){d+=` L ${pts[i]}`;}
+  const islands=STAGES.map((st,i)=>{
+    const stt=stageState(i);
+    const flag = stt==="done"?`<span class="flag">🚩</span>`:"";
+    const inner = stt==="done"? st.badge.emoji : st.emoji;
+    const bg = (stt==="done")?st.accent:(stt==="current"?st.accent:"#cfd8dc");
+    const tcol = (stt==="locked")?"#90a4ae":"#fff";
+    return `<div class="island ${stt}" style="left:${st.x}%;top:${st.y}%" onclick="clickIsland(${i},event)">
+        <div class="disc" style="color:${tcol};background:${bg}">${flag}${inner}</div>
+        <div class="label">${st.title}</div>
+      </div>`;
+  }).join("");
+  const complete = student.badges.length===STAGES.length;
+  app.innerHTML = hud() + `
+    <div class="maptitle">🗺️ La Carte au Trésor</div>
+    <div class="parchment mapsvgwrap" style="padding:8px;${complete?'cursor:pointer;':''}" ${complete?'onclick="onMapBgClick(event)"':''}>
+      <svg viewBox="0 0 860 400" style="width:100%;display:block;height:auto;">
+        <path d="${d}" class="dashpath"/>
+        <text x="14" y="28" font-size="22" font-family="Trebuchet MS" fill="#7a5a2a">⚓ Départ</text>
+        <text x="760" y="392" font-size="22" font-family="Trebuchet MS" fill="#7a5a2a">💎 Trésor</text>
+      </svg>
+      <div style="position:absolute;inset:0;">${islands}</div>
+    </div>
+    <div class="center mt noprint" style="color:#EAF6FF;">
+      ${complete
+        ? `<button class="btn big" onclick="renderFinale()">🏆 Voir mon diplôme&nbsp;!</button>
+           <div class="mt" style="font-weight:bold">🔒 Touche la carte pour débloquer ta surprise&nbsp;!</div>`
+        : `Touche l'île qui brille pour jouer&nbsp;!`}
+    </div>`;
+}
+function clickIsland(i,ev){
+  if(ev) ev.stopPropagation();   // évite de déclencher le déblocage de carte
+  const stt=stageState(i);
+  if(stt==="locked"){showToast("🔒 Termine d'abord l'île précédente !","bad");return;}
+  if(stt==="done"){showToast("⭐ Déjà réussi à 100% ! Médaille gagnée.","good");return;}
+  renderGame(i);
+}
+/* Carte terminée : un clic sur le fond de carte débloque AquaRun avec animation */
+function onMapBgClick(ev){
+  showAquaUnlock();
+}
+function showAquaUnlock(){
+  if(document.querySelector(".unlock-overlay")) return;
+  app.style.filter="grayscale(.85) brightness(.82)";   // la carte devient grisée derrière
+  const ov=el(`<div class="unlock-overlay">
+      <div class="unlock-lock" id="ulock">🔒</div>
+      <div class="unlock-card" id="ucard">
+        <div style="font-size:54px;line-height:1">🎮</div>
+        <h2>Bravo, tu as débloqué AquaRun&nbsp;!</h2>
+        <button class="btn big sea" onclick="launchAquaRun()">JOUER</button>
+        <div><button class="unlock-close" id="uclose">Plus tard</button></div>
+      </div>
+    </div>`);
+  document.body.appendChild(ov);
+  const lock=ov.querySelector("#ulock");
+  // le cadenas se secoue, puis se débloque, puis la fenêtre apparaît
+  setTimeout(()=>{ lock.textContent="🔓"; lock.classList.add("opened"); },1300);
+  setTimeout(()=>{ ov.querySelector("#ucard").classList.add("show"); confetti(); },1700);
+  ov.querySelector("#uclose").onclick=()=>{ ov.remove(); app.style.filter=""; };
+}
+
+/* ============================================================
+   SCÈNE DE JEU — aiguillage
+   ============================================================ */
+let cur={};
+function renderGame(i){
+  const st=STAGES[i];
+  cur={index:i, stage:st};
+  app.innerHTML = hud() + `
+    <div class="gamehead noprint">
+      <div class="ic" style="background:${st.accent};color:#fff">${st.emoji}</div>
+      <h2>${st.title}</h2>
+      <button class="btn ghost" style="margin-left:auto;font-size:1rem;padding:.5em 1em" onclick="renderMap()">🗺️ Carte</button>
+    </div>
+    <div class="panel"><div id="game" class="gamearea"></div></div>`;
+  const mount=document.getElementById("game");
+  ({sort:gameSort,memory:gameMemory,order:gameOrder,cloze:gameCloze,pollution:gamePollution,boss:gameBoss}[st.type])(mount,st);
+}
+
+function instrBox(txt){return `<div class="instr"><span class="mas">${droplet(48)}</span><div>${txt}</div></div>`;}
+
+/* ---------- JEU 1 : TRI DES GOUTTES ---------- */
+function gameSort(mount,st){
+  const items=shuffle(DATA.tri.slice());
+  let idx=0, correct=0;
+  mount.innerHTML = instrBox("Lis attentivement chaque description. À toi de juger : <b>propre</b> ou <b>potable</b> ? Classe-la dans le bon panier.") + `
+    <div class="cardflow">
+      <div class="flowmeter"><i id="fm"></i></div>
+      <div class="flowcard" id="fc"></div>
+      <div class="sortbtns">
+        <div class="basket b1" id="bP">🪣 EAU PROPRE</div>
+        <div class="basket b2" id="bO">🚰 EAU POTABLE</div>
+      </div>
+    </div>`;
+  const fc=mount.querySelector("#fc"), fm=mount.querySelector("#fm");
+  function show(){ if(idx>=items.length){return finish();} fc.textContent=items[idx].t; fm.style.width=(idx/items.length*100)+"%"; }
+  function answer(choice){
+    const good=items[idx].a===choice;
+    if(good){correct++;showToast("✅ Bravo !","good");fc.style.borderColor="#43A047";}
+    else{showToast(items[idx].a==="propre"?"❌ C'était EAU PROPRE":"❌ C'était EAU POTABLE","bad");fc.style.borderColor="#E53935";}
+    setTimeout(()=>{fc.style.borderColor="#DCEBF7";idx++;show();},700);
+  }
+  mount.querySelector("#bP").onclick=()=>answer("propre");
+  mount.querySelector("#bO").onclick=()=>answer("potable");
+  function finish(){ fm.style.width="100%"; finishStage(Math.round(correct/items.length*100), correct, items.length); }
+  show();
+}
+
+/* ---------- JEU 2 : MEMORY DE LA SURVIE ---------- */
+function gameMemory(mount,st){
+  const d=DATA.survie;
+  let cards=[];
+  d.pairs.forEach((p,i)=>{cards.push({pair:i,txt:p.k,kind:"k"});cards.push({pair:i,txt:p.v,kind:"v"});});
+  cards=shuffle(cards);
+  let first=null,lock=false,matched=0;
+  mount.innerHTML = instrBox("Retourne les cartes 2 par 2. Associe chaque <b>technique</b> à ce qu'il faut faire&nbsp;!") +
+    `<div class="memgrid" id="grid"></div><div id="bonusZone"></div>`;
+  const grid=mount.querySelector("#grid");
+  cards.forEach((c,i)=>{
+    const card=el(`<div class="memcard" data-i="${i}"><div class="face back">💧</div><div class="face front">${c.txt}</div></div>`);
+    card.onclick=()=>flip(i,card,c);
+    grid.appendChild(card);
+  });
+  function flip(i,card,c){
+    if(lock||card.classList.contains("flip")||card.classList.contains("done"))return;
+    card.classList.add("flip");
+    if(!first){first={i,card,c};return;}
+    lock=true;
+    if(first.c.pair===c.pair && first.i!==i){
+      setTimeout(()=>{first.card.classList.add("done");card.classList.add("done");matched++;first=null;lock=false;showToast("🎉 Paire trouvée !","good");if(matched===d.pairs.length)startBonus();},450);
+    }else{
+      setTimeout(()=>{first.card.classList.remove("flip");card.classList.remove("flip");first=null;lock=false;},900);
+    }
+  }
+  let bonusIdx=0,bonusCorrect=0;
+  function startBonus(){
+    const bz=mount.querySelector("#bonusZone");
+    function askB(){
+      if(bonusIdx>=d.bonus.length){return finishStage(Math.round(bonusCorrect/d.bonus.length*100),bonusCorrect,d.bonus.length);}
+      const b=d.bonus[bonusIdx];
+      bz.innerHTML=`<div class="qcard"><div class="q">⭐ Question bonus : ${b.q}</div><div class="answers" id="bans"></div></div>`;
+      const ans=bz.querySelector("#bans");
+      b.options.forEach((o,oi)=>{const btn=el(`<button class="ans">${o}</button>`);btn.onclick=()=>{
+        if(oi===b.correct){btn.classList.add("good");bonusCorrect++;showToast("✅ Exact !","good");}
+        else{btn.classList.add("wrong");showToast("💡 "+b.hint,"bad");}
+        [...ans.children].forEach(x=>x.disabled=true);
+        setTimeout(()=>{bonusIdx++;askB();},1200);
+      };ans.appendChild(btn);});
+    }
+    bz.scrollIntoView({behavior:"smooth"});askB();
+  }
+}
+
+/* ---------- JEU 3 : CONSTRUIS L'USINE (ordre — drag & drop) ---------- */
+function gameOrder(mount,st){
+  const correctOrder=DATA.usine;
+  let order=shuffle(correctOrder.map((_,i)=>i));
+  while(order.every((v,i)=>v===i)) order=shuffle(correctOrder.map((_,i)=>i));
+  mount.innerHTML = instrBox("Glisse chaque étape pour remettre l'usine dans le <b>bon ordre</b>, puis clique sur Vérifier&nbsp;!") +
+    `<div class="orderlist" id="ol"></div>
+     <div class="center mt"><button class="btn big" id="check">✅ Vérifier l'ordre</button></div>`;
+  const ol=mount.querySelector("#ol");
+  let dragSrcPos=null;
+
+  function draw(){
+    ol.innerHTML="";
+    order.forEach((stepIdx,pos)=>{
+      const step=correctOrder[stepIdx];
+      const row=el(`<div class="orderrow" draggable="true" data-pos="${pos}">
+        <div class="drag-handle" title="Glisser pour déplacer">⠿</div>
+        <div class="num">${pos+1}</div><div class="ic">${step.ic}</div>
+        <div class="txt">${step.t}</div></div>`);
+
+      // — Souris (HTML5 drag) —
+      row.addEventListener("dragstart",e=>{
+        dragSrcPos=pos; e.dataTransfer.effectAllowed="move";
+        setTimeout(()=>row.classList.add("dragging"),0);
+      });
+      row.addEventListener("dragend",()=>{
+        row.classList.remove("dragging");
+        ol.querySelectorAll(".drag-over").forEach(r=>r.classList.remove("drag-over"));
+      });
+      row.addEventListener("dragover",e=>{e.preventDefault();e.dataTransfer.dropEffect="move";});
+      row.addEventListener("dragenter",e=>{
+        e.preventDefault();
+        ol.querySelectorAll(".drag-over").forEach(r=>r.classList.remove("drag-over"));
+        if(pos!==dragSrcPos) row.classList.add("drag-over");
+      });
+      row.addEventListener("dragleave",()=>row.classList.remove("drag-over"));
+      row.addEventListener("drop",e=>{
+        e.preventDefault();
+        ol.querySelectorAll(".drag-over").forEach(r=>r.classList.remove("drag-over"));
+        if(dragSrcPos!==null&&dragSrcPos!==pos){
+          const[moved]=order.splice(dragSrcPos,1); order.splice(pos,0,moved);
+          dragSrcPos=null; draw();
+        }
+      });
+
+      // — Tactile —
+      row.addEventListener("touchstart",e=>{
+        dragSrcPos=pos; row.classList.add("dragging");
+      },{passive:true});
+      row.addEventListener("touchmove",e=>{
+        e.preventDefault();
+        const touch=e.touches[0];
+        ol.querySelectorAll(".drag-over").forEach(r=>r.classList.remove("drag-over"));
+        for(const r of ol.querySelectorAll(".orderrow:not(.dragging)")){
+          const rect=r.getBoundingClientRect();
+          if(touch.clientY>=rect.top&&touch.clientY<=rect.bottom){r.classList.add("drag-over");break;}
+        }
+      },{passive:false});
+      row.addEventListener("touchend",e=>{
+        row.classList.remove("dragging");
+        const over=ol.querySelector(".drag-over");
+        if(over){
+          over.classList.remove("drag-over");
+          const tPos=+over.dataset.pos;
+          if(dragSrcPos!==null&&dragSrcPos!==tPos){
+            const[moved]=order.splice(dragSrcPos,1); order.splice(tPos,0,moved); draw();
+          }
+        }
+        dragSrcPos=null;
+      },{passive:true});
+
+      ol.appendChild(row);
+    });
+  }
+  draw();
+
+  mount.querySelector("#check").onclick=()=>{
+    let correct=0;
+    [...ol.children].forEach((row,pos)=>{
+      const ok=order[pos]===pos; row.classList.remove("ok","bad");
+      row.classList.add(ok?"ok":"bad"); if(ok)correct++;
+    });
+    if(correct===correctOrder.length){showToast("🏭 Usine parfaite !","good");setTimeout(()=>finishStage(100,correct,correctOrder.length),700);}
+    else{showToast(`Encore ${correctOrder.length-correct} à replacer...`,"bad");}
+  };
+}
+
+/* ---------- JEU 4 : LE CHÂTEAU D'EAU (cloze + eau qui monte) ---------- */
+function gameCloze(mount,st){
+  const d=DATA.chateau;
+  const pool=shuffle(d.answers.slice());
+  let blanks=[]; // index -> placed word
+  let selWord=null;
+  // construit le texte
+  let html="", bi=0;
+  d.parts.forEach(p=>{ if(p===null){html+=`<span class="blank" data-b="${bi}" id="b${bi}">_____</span>`;bi++;} else html+=escapeHtml(p); });
+  const total=bi;
+  blanks=new Array(total).fill(null);
+  mount.innerHTML = instrBox("Choisis un mot, puis touche un trou pour le placer. Remplis bien le château&nbsp;!") + `
+    <div class="clozewrap">
+      <div class="towerbox">
+        <svg class="tower-svg" viewBox="0 0 200 260">
+          <defs><clipPath id="tankClip"><path d="M40 60 Q40 40 100 40 Q160 40 160 60 L160 120 Q160 140 100 140 Q40 140 40 120 Z"/></clipPath></defs>
+          <rect x="86" y="140" width="28" height="96" fill="#B0BEC5"/>
+          <rect x="70" y="236" width="60" height="14" rx="4" fill="#78909C"/>
+          <path d="M40 60 Q40 40 100 40 Q160 40 160 60 L160 120 Q160 140 100 140 Q40 140 40 120 Z" fill="#ECEFF1" stroke="#8E24AA" stroke-width="5"/>
+          <rect id="water" x="40" y="140" width="120" height="0" fill="#4FC3F7" clip-path="url(#tankClip)"/>
+          <path d="M40 60 Q40 40 100 40 Q160 40 160 60 L160 120 Q160 140 100 140 Q40 140 40 120 Z" fill="none" stroke="#8E24AA" stroke-width="5"/>
+        </svg>
+        <div style="font-weight:bold;color:#8E24AA" id="fillTxt">0 / ${total} rempli</div>
+      </div>
+      <div style="flex:1 1 380px">
+        <div class="clozetext" id="ct">${html}</div>
+        <div class="wordpool" id="wp"></div>
+        <div class="center mt"><button class="btn big" id="check">✅ Vérifier le château</button></div>
+      </div>
+    </div>`;
+  const wp=mount.querySelector("#wp");
+  pool.forEach(w=>{const b=el(`<button class="word">${w}</button>`);b.onclick=()=>{if(b.classList.contains("used"))return;mount.querySelectorAll(".word").forEach(x=>x.classList.remove("sel"));b.classList.add("sel");selWord={w,el:b};};wp.appendChild(b);});
+  mount.querySelectorAll(".blank").forEach(bl=>{
+    bl.onclick=()=>{
+      const bidx=+bl.dataset.b;
+      if(blanks[bidx]){ // libère le mot déjà placé
+        const freed=blanks[bidx]; blanks[bidx]=null; bl.textContent="_____"; bl.classList.remove("filled","ok");
+        const wbtn=[...wp.children].find(x=>x.textContent===freed && x.classList.contains("used")); if(wbtn)wbtn.classList.remove("used");
+      }
+      if(selWord){ blanks[bidx]=selWord.w; bl.textContent=selWord.w; bl.classList.add("filled"); selWord.el.classList.add("used"); selWord.el.classList.remove("sel"); selWord=null; }
+      updateFill();
+    };
+  });
+  function updateFill(){
+    const filled=blanks.filter(Boolean).length;
+    mount.querySelector("#fillTxt").textContent=`${filled} / ${total} rempli`;
+    mount.querySelector("#water").setAttribute("height", (filled/total*100)+"");
+    mount.querySelector("#water").setAttribute("y", (140-(filled/total*100))+"");
+  }
+  mount.querySelector("#check").onclick=()=>{
+    if(blanks.some(b=>!b)){showToast("Remplis tous les trous d'abord !","bad");return;}
+    let correct=0;
+    blanks.forEach((w,bidx)=>{const bl=mount.querySelector("#b"+bidx);if(w===d.answers[bidx]){correct++;bl.classList.add("ok");}else{bl.classList.remove("ok");}});
+    if(correct===total){showToast("🏰 Château rempli, bravo !","good");setTimeout(()=>finishStage(100,correct,total),800);}
+    else{
+      showToast(`${correct}/${total} bons. Réessaie les autres !`,"bad");
+      // renvoie les mauvais mots dans la réserve
+      blanks.forEach((w,bidx)=>{if(w!==d.answers[bidx]){const bl=mount.querySelector("#b"+bidx);bl.textContent="_____";bl.classList.remove("filled","ok");const wbtn=[...wp.children].find(x=>x.textContent===w&&x.classList.contains("used"));if(wbtn)wbtn.classList.remove("used");blanks[bidx]=null;}});
+      updateFill();
+    }
+  };
+}
+
+/* ---------- JEU 5 : MARAIS DES POLLUEURS (chasse + tri) ---------- */
+function gamePollution(mount,st){
+  const d=DATA.pollueurs;
+  const sources=shuffle(d.sources.slice());
+  let idx=0,correct=0;
+  mount.innerHTML = instrBox("Une bulle de pollution monte du marais&nbsp;! Dis d'où elle vient pour la faire éclater.") + `
+    <div class="bubblearea" id="ba"></div>
+    <div class="catbtns" id="cb">
+      <button class="catbtn cat-agri" data-c="agri">🚜 Agricole</button>
+      <button class="catbtn cat-indus" data-c="indus">🏭 Industrielle</button>
+      <button class="catbtn cat-dom" data-c="dom">🏠 Domestique</button>
+    </div>`;
+  const ba=mount.querySelector("#ba");
+  const cb=mount.querySelector("#cb");
+  function spawn(){
+    if(idx>=sources.length)return round2();
+    ba.innerHTML="";
+    const s=sources[idx];
+    const bub=el(`<div class="pollbubble">💢 ${s.t}</div>`);
+    ba.appendChild(bub);
+    // animation montée
+    bub.animate([{bottom:"-90px"},{bottom:"120px"}],{duration:1400,fill:"forwards",easing:"ease-out"});
+  }
+  cb.querySelectorAll(".catbtn").forEach(b=>b.onclick=()=>{
+    if(idx>=sources.length)return;
+    const good=sources[idx].c===b.dataset.c;
+    if(good){correct++;showToast("✅ Bien vu !","good");}
+    else{showToast("❌ C'était : "+CAT_LABELS[sources[idx].c],"bad");}
+    const bub=ba.querySelector(".pollbubble");
+    if(bub){bub.animate([{transform:"translateX(-50%) scale(1)",opacity:1},{transform:"translateX(-50%) scale(0)",opacity:0}],{duration:300,fill:"forwards"});}
+    idx++; setTimeout(spawn,500);
+  });
+  // ronde 2 : conséquences
+  function round2(){
+    const cons=shuffle(d.consequences.slice());
+    let sel=null, placed=0, c2=0;
+    mount.innerHTML = instrBox("Bravo ! Maintenant, range chaque <b>conséquence</b> dans la bonne colonne.") + `
+      <div id="chips" style="display:flex;flex-wrap:wrap;gap:8px;justify-content:center;margin-bottom:12px"></div>
+      <div class="sortcols">
+        <div class="sortcol" style="background:#EF5350"><h4>❤️ Santé</h4><div data-col="sante"></div></div>
+        <div class="sortcol" style="background:#66BB6A"><h4>🌍 Environnement</h4><div data-col="env"></div></div>
+        <div class="sortcol" style="background:#FFA726"><h4>💶 Économique</h4><div data-col="eco"></div></div>
+      </div>`;
+    const chips=mount.querySelector("#chips");
+    cons.forEach((c,i)=>{const chip=el(`<div class="sortchip" data-i="${i}">${c.t}</div>`);chip.onclick=()=>{chips.querySelectorAll(".sortchip").forEach(x=>x.classList.remove("sel"));chip.classList.add("sel");sel={chip,c};};chips.appendChild(chip);});
+    mount.querySelectorAll(".sortcol").forEach(col=>{
+      col.onclick=()=>{ if(!sel)return; const want=col.querySelector("[data-col]").dataset.col;
+        const good=sel.c.c===want;
+        if(good){col.querySelector("[data-col]").appendChild(sel.chip);sel.chip.classList.remove("sel");sel.chip.onclick=null;sel.chip.style.cursor="default";c2++;placed++;showToast("✅","good");}
+        else{showToast("❌ Pas la bonne colonne","bad");sel.chip.classList.remove("sel");}
+        sel=null;
+        if(placed===cons.length){const tot=sources.length+cons.length;const cc=correct+c2;setTimeout(()=>finishStage(Math.round(cc/tot*100),cc,tot),500);}
+      };
+    });
+  }
+  spawn();
+}
+
+/* ---------- JEU 6 : COMBAT DU BOSS GASPI ---------- */
+function gameBoss(mount,st){
+  const qs=shuffle(DATA.heros.slice());
+  let idx=0,correct=0,playerHP=3;
+  const HP_MAX=3, WIN=15, hpMax=WIN;
+
+  mount.innerHTML = instrBox("Le <b>Gaspi-Monstre</b> gâche l'eau ! Il te faut <b>15 coups portés</b> pour le vaincre. Attention — 3 erreurs et tu perds&nbsp;!") + `
+    <div class="bossstage">
+      <div style="display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:10px;margin-bottom:10px;">
+        <div>
+          <div style="font-weight:bold;color:#fff;text-shadow:0 2px 0 rgba(0,0,0,.3);font-size:.95rem;margin-bottom:3px;">Tes vies</div>
+          <div class="player-hpbar" id="playerHP">❤️❤️❤️</div>
+        </div>
+        <div style="text-align:right;">
+          <div style="font-weight:bold;color:#fff;text-shadow:0 2px 0 rgba(0,0,0,.3);font-size:.95rem;margin-bottom:3px;">Énergie du monstre</div>
+          <div class="hpbar" style="width:min(280px,55vw);margin-left:auto;"><i id="hp" style="width:100%"></i></div>
+          <div style="font-weight:bold;color:#fff;text-shadow:0 2px 0 rgba(0,0,0,.2);font-size:.9rem;" id="hptxt">100%</div>
+        </div>
+      </div>
+      <div class="monster" id="mon">👹</div>
+      <div id="attackFx" style="position:relative;height:0;overflow:visible;pointer-events:none;"></div>
+    </div>
+    <div id="qzone"></div>`;
+
+  const mon=mount.querySelector("#mon"),hp=mount.querySelector("#hp"),hptxt=mount.querySelector("#hptxt");
+  const qz=mount.querySelector("#qzone"),phEl=mount.querySelector("#playerHP");
+
+  function refreshHP(){
+    phEl.innerHTML="❤️".repeat(playerHP)+"🖤".repeat(HP_MAX-playerHP);
+  }
+
+  function bossAttack(){
+    playerHP=Math.max(0,playerHP-1);
+    refreshHP();
+    // Tremblement du panneau
+    const panel=mount.parentElement;
+    panel.style.animation="none"; void panel.offsetWidth;
+    panel.style.animation="bossShake .55s";
+    setTimeout(()=>panel.style.animation="",600);
+    // Flash rouge sur l'écran
+    const flash=document.createElement("div");
+    flash.style.cssText="position:fixed;inset:0;background:rgba(200,0,0,.3);z-index:200;pointer-events:none;animation:screenFlash .5s forwards;";
+    document.body.appendChild(flash);
+    setTimeout(()=>flash.remove(),520);
+    // Emoji d'attaque
+    const fx=mount.querySelector("#attackFx");
+    fx.innerHTML=`<div style="position:absolute;top:-72px;left:50%;transform:translateX(-50%);font-size:3.2rem;animation:attackPop .65s forwards;">⚡💥</div>`;
+    setTimeout(()=>fx.innerHTML="",700);
+  }
+
+  function gameOver(){
+    qz.innerHTML=`<div class="qcard" style="border-color:#E53935;text-align:center;">
+      <div style="font-size:3.5rem">💀</div>
+      <div class="q" style="color:#C62828;font-size:1.35rem;">Le Gaspi-Monstre t'a vaincu !</div>
+      <p style="margin:10px 0;">Tu as eu <b>${correct}</b> bonne(s) réponse(s) sur <b>${idx}</b> questions.</p>
+      <div style="display:flex;gap:10px;flex-wrap:wrap;justify-content:center;">
+        <button class="btn coral" onclick="renderGame(${cur.index})">🔁 Réessayer</button>
+        <button class="btn ghost" onclick="renderMap()">🗺️ Carte</button>
+      </div></div>`;
+  }
+
+  function ask(){
+    if(playerHP<=0){ return gameOver(); }
+    if(correct>=WIN){ return finishStage(100,WIN,WIN); }
+    if(idx>=qs.length){ return finishStage(Math.round(correct/WIN*100),correct,WIN); }
+    const q=qs[idx];
+    qz.innerHTML=`<div class="qcard"><div class="q">Question ${idx+1} / ${qs.length} : ${q.q}</div><div class="answers" id="ans"></div></div>`;
+    const ans=qz.querySelector("#ans");
+    q.options.forEach((o,oi)=>{
+      const b=el(`<button class="ans">${o}</button>`);
+      b.onclick=()=>{
+        [...ans.children].forEach(x=>x.disabled=true);
+        if(oi===q.correct){
+          b.classList.add("good"); correct++;
+          mon.classList.add("hit"); showToast("💥 Touché !","good");
+          const left=Math.round((WIN-correct)/WIN*100);
+          hp.style.width=left+"%"; hptxt.textContent=left+"%";
+          setTimeout(()=>mon.classList.remove("hit"),400);
+          if(correct>=WIN) mon.textContent="😵";
+        }else{
+          b.classList.add("wrong"); showToast("💡 "+q.hint,"bad");
+          bossAttack();
+        }
+        idx++;
+        setTimeout(ask,1400);
+      };
+      ans.appendChild(b);
+    });
+  }
+  ask();
+}
+
+/* ============================================================
+   FIN D'UNE ÉTAPE
+   ============================================================ */
+function finishStage(pct,correct,total){
+  const st=cur.stage;
+  const prev=student.stages[st.id]||{best:0,completed:false,attempts:0};
+  const rec={ best:Math.max(prev.best,pct), completed:prev.completed||pct===100, attempts:(prev.attempts||0)+1 };
+  student.stages[st.id]=rec;
+  let newBadge=false;
+  if(pct===100 && !student.badges.includes(st.id)){ student.badges.push(st.id); newBadge=true; if(student.current===cur.index)student.current=Math.min(STAGES.length,cur.index+1); }
+  persist();
+  renderResult(pct,correct,total,newBadge);
+}
+function renderResult(pct,correct,total,newBadge){
+  const st=cur.stage; const win=pct===100;
+  if(win)confetti();
+  let msg, actions;
+  if(win){
+    msg=`<div class="bigbadge" style="background:radial-gradient(circle at 50% 35%,#fff,${st.accent})">${st.badge.emoji}</div>
+         <h2>Médaille gagnée&nbsp;!</h2>
+         <div class="scorebig">${pct}%</div>
+         <div class="fb"><b>${st.badge.name}</b><br>Tu as tout réussi sur ${st.title}&nbsp;! Cette île est terminée. 🎉</div>`;
+    const last=student.badges.length===STAGES.length;
+    actions = last
+      ? `<button class="btn big" onclick="renderFinale()">🏆 Mon diplôme&nbsp;!</button>`
+      : `<button class="btn big" onclick="renderMap()">🗺️ Continuer l'aventure</button>`;
+  }else{
+    msg=`<div class="bigbadge" style="background:radial-gradient(circle at 50% 35%,#fff,#90a4ae);font-size:70px">💪</div>
+         <h2>Presque&nbsp;!</h2>
+         <div class="scorebig">${pct}%</div>
+         <div class="fb">Tu as ${correct} bonnes réponses sur ${total}.<br>Il faut <b>100%</b> pour gagner la médaille. Tu peux réessayer&nbsp;!</div>`;
+    actions = `<button class="btn big" onclick="renderGame(${cur.index})">🔁 Réessayer</button>
+               <button class="btn ghost" onclick="renderMap()">🗺️ Carte</button>`;
+  }
+  app.innerHTML = hud() + `<div class="result">${msg}<div class="mt" style="display:flex;gap:12px;flex-wrap:wrap;justify-content:center">${actions}</div></div>`;
+}
+
+/* ============================================================
+   FINALE : DIPLÔME
+   ============================================================ */
+function renderFinale(){
+  confetti();
+  const meds=STAGES.map(s=>`<div class="m" title="${s.badge.name}" style="background:radial-gradient(circle at 50% 35%,#fff,${s.accent})">${s.badge.emoji}</div>`).join("");
+  app.innerHTML = hud() + `
+    <div class="diploma">
+      <div style="font-size:60px">🏆</div>
+      <h2>Diplôme de Championne / Champion de l'Eau</h2>
+      <div class="name">${escapeHtml(student.name)}</div>
+      <div>a terminé toute l'aventure et gagné les 6 médailles&nbsp;!</div>
+      <div class="medrow">${meds}</div>
+      <div style="color:#666">Score total : <b>${totalPct(student)}%</b></div>
+      <div class="mt noprint" style="display:flex;gap:12px;flex-wrap:wrap;justify-content:center">
+        <button class="btn big" onclick="showDiplomaView()">🏅 Afficher mon diplôme</button>
+        <button class="btn sea big" onclick="launchAquaRun()">🎮 Dernier jeu : AquaRun&nbsp;!</button>
+        <button class="btn ghost" onclick="renderMap()">🗺️ Retour à la carte</button>
+      </div>
+    </div>`;
+}
+
+/* Affichage plein écran du diplôme (joli rendu + impression/PDF propre) */
+function showDiplomaView(){
+  confetti();
+  const meds=STAGES.map(s=>`<div class="m" title="${s.badge.name}" style="background:radial-gradient(circle at 50% 35%,#fff,${s.accent})">${s.badge.emoji}</div>`).join("");
+  const dateStr=new Date().toLocaleDateString("fr-FR",{day:"numeric",month:"long",year:"numeric"});
+  const view=el(`<div class="diplomaView">
+      <div class="diploma-sheet" id="diplomaSheet">
+        <div class="seal">🏆</div>
+        <h2>Diplôme de Championne / Champion de l'Eau</h2>
+        <div class="sub">Ce diplôme est décerné à</div>
+        <div class="name">${escapeHtml(student.name)}</div>
+        <div class="sub">pour avoir terminé toute <b>L'Aventure de l'Eau</b><br>et gagné les ${STAGES.length} médailles&nbsp;!</div>
+        <div class="medrow">${meds}</div>
+        <div class="sub">Score total : <b>${totalPct(student)}%</b></div>
+        <div class="foot">Délivré le ${dateStr} · L'Aventure de l'Eau</div>
+      </div>
+      <div class="noprint" style="display:flex;gap:12px;flex-wrap:wrap;justify-content:center">
+        <button class="btn" onclick="window.print()">🖨️ Imprimer / Enregistrer en PDF</button>
+        <button class="btn ghost" onclick="this.closest('.diplomaView').remove()">✖️ Fermer</button>
+      </div>
+    </div>`);
+  document.body.appendChild(view);
+}
+
+/* Lance le mini-jeu final AquaRun (même page) */
+function launchAquaRun(){
+  window.location.href="AquaRun/index.html";
+}
+
+/* ============================================================
+   ESPACE ENSEIGNANT
+   ============================================================ */
+function openTeacher(){
+  const pin=prompt("Code enseignant :");
+  if(pin===null)return;
+  if(pin!==CONFIG.teacherPIN){showToast("Code incorrect","bad");return;}
+  renderTeacher();
+}
+async function renderTeacher(){
+  const synced=Sync.mode==="firebase";
+  app.innerHTML = `
+    <div class="hud noprint"><div class="who">👩‍🏫 Tableau de bord — ${escapeHtml(CONFIG.sessionCode)}</div>
+      <span class="syncbadge ${synced?'sync-on':'sync-off'}" style="margin-left:auto">${synced?'🔴 Suivi en direct (Firebase)':'💾 Suivi local (ce poste)'}</span>
+    </div>
+    <div class="dash">
+      <div class="dashtools noprint">
+        <button class="btn sea" onclick="renderTeacher()">🔄 Rafraîchir</button>
+        <button class="btn" onclick="exportCSV()">📊 Exporter CSV</button>
+        <button class="btn" onclick="exportJSON()">🗂️ Exporter JSON</button>
+        <button class="btn ghost" onclick="student?renderMap():renderWelcome()">↩️ Retour</button>
+      </div>
+      <div class="dashtools noprint" style="border-top:2px dashed #d7e2ea;padding-top:12px;margin-top:4px">
+        <span style="font-weight:bold;color:var(--sea-deep);align-self:center">🔍 Accès direct (aperçu)&nbsp;:</span>
+        ${STAGES.map((s,i)=>`<button class="btn ghost" style="font-size:.95rem;padding:.45em .9em" onclick="teacherPreview(${i})">${s.emoji} ${s.title}</button>`).join("")}
+        <button class="btn sea" style="font-size:.95rem;padding:.45em .9em" onclick="launchAquaRun()">🎮 AquaRun</button>
+      </div>
+      <div id="dashbody">Chargement...</div>
+    </div>`;
+  let list=[];
+  try{
+    list = await Promise.race([
+      Sync.getAll(),
+      new Promise((_,rej)=>setTimeout(()=>rej(new Error("timeout")),5000))
+    ]);
+  }catch(e){
+    list = (typeof Sync._allLocal==="function") ? Sync._allLocal() : [];
+    showToast("⚠️ Suivi en direct indisponible — affichage local","bad");
+  }
+  drawDash(list);
+  if(synced){ try{ Sync.onAll(drawDash); }catch(e){} }
+}
+/* Aperçu enseignant : lance n'importe quelle île même verrouillée */
+function teacherPreview(i){
+  if(!student) student=newStudent("Aperçu prof");
+  renderGame(i);
+}
+let _lastList=[];
+function drawDash(list){
+  _lastList=list||[];
+  const body=document.getElementById("dashbody"); if(!body)return;
+  if(!_lastList.length){body.innerHTML=`<p>Aucun élève pour l'instant. Les prénoms apparaîtront ici dès qu'ils commencent.</p>`;return;}
+  const rows=_lastList.sort((a,b)=>(b.lastActive||0)-(a.lastActive||0)).map(s=>{
+    const cells=STAGES.map(st=>{const r=s.stages?.[st.id];const v=r?.best||0;const done=r?.completed;
+      return `<td title="${st.title}">${done?'<span class="badge-mini">'+st.badge.emoji+'</span>':''}<span class="minibar"><i style="width:${v}%;background:${done?'#43A047':'#FB8C00'}"></i></span></td>`;}).join("");
+    const tp=totalPct(s);
+    const ago=timeAgo(s.lastActive);
+    return `<tr><td><b>${escapeHtml(s.name)}</b></td><td>${(s.badges||[]).length}/${STAGES.length}</td><td><b>${tp}%</b></td>${cells}<td style="color:#888;font-size:.85rem">${ago}</td>
+      <td class="noprint"><button class="btn ghost" style="font-size:.8rem;padding:.3em .7em" onclick="resetOne('${escapeHtml(s.name).replace(/'/g,"\\'")}')">♻️</button></td></tr>`;
+  }).join("");
+  const heads=STAGES.map(st=>`<th title="${st.title}">${st.emoji}</th>`).join("");
+  body.innerHTML=`<div style="overflow-x:auto"><table>
+    <thead><tr><th>Prénom</th><th>Méd.</th><th>Total</th>${heads}<th>Activité</th><th class="noprint"></th></tr></thead>
+    <tbody>${rows}</tbody></table></div>
+    <p style="color:#888;font-size:.85rem;margin-top:10px">Les barres montrent le meilleur score par jeu. Vert = réussi à 100% (verrouillé).</p>`;
+}
+function resetOne(name){ if(confirm("Réinitialiser la progression de "+name+" ?")){Sync.reset(name);showToast("Réinitialisé","good");renderTeacher();} }
+function timeAgo(ts){ if(!ts)return"—"; const s=Math.floor((Date.now()-ts)/1000); if(s<60)return"à l'instant"; if(s<3600)return Math.floor(s/60)+" min"; if(s<86400)return Math.floor(s/3600)+" h"; return Math.floor(s/86400)+" j"; }
+function exportCSV(){
+  const head=["Prénom","Médailles","Total %",...STAGES.map(s=>s.title+" %"),"Dernière activité"];
+  const lines=[head.join(";")];
+  _lastList.forEach(s=>{const row=[s.name,(s.badges||[]).length,totalPct(s),...STAGES.map(st=>s.stages?.[st.id]?.best||0),new Date(s.lastActive||Date.now()).toLocaleString("fr-FR")];lines.push(row.join(";"));});
+  download("eau_progression.csv",lines.join("\n"),"text/csv");
+}
+function exportJSON(){ download("eau_progression.json",JSON.stringify(_lastList,null,2),"application/json"); }
+function download(fn,txt,mime){const b=new Blob([txt],{type:mime+";charset=utf-8"});const u=URL.createObjectURL(b);const a=document.createElement("a");a.href=u;a.download=fn;a.click();setTimeout(()=>URL.revokeObjectURL(u),1000);}
+
+/* ============================================================
+   UTILS
+   ============================================================ */
+function shuffle(a){for(let i=a.length-1;i>0;i--){const j=Math.floor(Math.random()*(i+1));[a[i],a[j]]=[a[j],a[i]];}return a;}
+
+/* ============================================================
+   DÉMARRAGE
+   ============================================================ */
+(async function(){ await Sync.init(); renderWelcome(); })();
+</script>
+</body>
+</html>
