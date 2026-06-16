@@ -753,6 +753,8 @@ const Store = (()=>{ let mem={},ok=false;
 const safeKey = n => (n||"").toLowerCase().normalize("NFD").replace(/[\u0300-\u036f]/g,"").replace(/[^a-z0-9]/g,"_").slice(0,40) || "anon";
 const localKey = n => `eauquest_${CONFIG.sessionCode}_s_${safeKey(n)}`;
 const regKey   = ()=> `eauquest_${CONFIG.sessionCode}_reg`;
+const curKey   = ()=> `eauquest_${CONFIG.sessionCode}_current`;   // élève courant (passé à AquaRun)
+const aquaPendKey = ()=> `eauquest_${CONFIG.sessionCode}_aquapend`; // scores AquaRun à resynchroniser
 
 /* ============================================================
    SYNCHRONISATION (local par défaut, Firebase si configuré)
@@ -798,7 +800,7 @@ const Sync = {
 let student=null;
 function newStudent(name){
   return { name:name.trim(), nameKey:safeKey(name), startedAt:Date.now(), lastActive:Date.now(),
-           current:0, stages:{}, badges:[] };
+           current:0, stages:{}, badges:[], aqua:{best:0, stage2:false, plays:0, lastPlayed:0} };
 }
 function totalPct(s){ let sum=0; STAGES.forEach(st=>{ sum += (s.stages?.[st.id]?.best||0); }); return Math.round(sum/STAGES.length); }
 function persist(){ if(!student)return; student.lastActive=Date.now(); Sync.save(student); }
@@ -1514,9 +1516,23 @@ function showDiplomaView(){
   document.body.appendChild(view);
 }
 
-/* Lance le mini-jeu final AquaRun (même page) */
+/* Lance le mini-jeu final AquaRun.
+   On transmet l'élève courant (paramètre d'URL + pointeur local) pour qu'AquaRun
+   puisse enregistrer son score, lu ensuite par le tableau de bord prof. */
 function launchAquaRun(){
-  window.location.href="AquaRun/index.html";
+  try{ Store.set(curKey(), student?student.name:""); }catch(e){}
+  const q = "?code="+encodeURIComponent(CONFIG.sessionCode)
+          + (student?("&s="+encodeURIComponent(student.name)):"");
+  window.location.href="aquarun/index.html"+q;
+}
+
+/* Au démarrage : pousse vers la synchro (Firebase) les scores AquaRun
+   enregistrés en local par la page du mini-jeu. */
+function flushAquaPending(){
+  let names=[]; try{names=JSON.parse(Store.get(aquaPendKey())||"[]");}catch(e){}
+  if(!names.length) return;
+  names.forEach(n=>{ const s=Sync.loadLocal(n); if(s) Sync.save(s); });
+  try{ Store.del(aquaPendKey()); }catch(e){}
 }
 
 /* ============================================================
@@ -1576,21 +1592,23 @@ function drawDash(list){
       return `<td title="${st.title}">${done?'<span class="badge-mini">'+st.badge.emoji+'</span>':''}<span class="minibar"><i style="width:${v}%;background:${done?'#43A047':'#FB8C00'}"></i></span></td>`;}).join("");
     const tp=totalPct(s);
     const ago=timeAgo(s.lastActive);
-    return `<tr><td><b>${escapeHtml(s.name)}</b></td><td>${(s.badges||[]).length}/${STAGES.length}</td><td><b>${tp}%</b></td>${cells}<td style="color:#888;font-size:.85rem">${ago}</td>
+    const aqua=(s.aqua&&s.aqua.best)||0;
+    const aquaCell=`<td title="Meilleur score AquaRun${(s.aqua&&s.aqua.stage2)?' — Stage 2 atteint':''}"><b>${aqua}</b>${(s.aqua&&s.aqua.stage2)?' 🏭':''}</td>`;
+    return `<tr><td><b>${escapeHtml(s.name)}</b></td><td>${(s.badges||[]).length}/${STAGES.length}</td><td><b>${tp}%</b></td>${cells}${aquaCell}<td style="color:#888;font-size:.85rem">${ago}</td>
       <td class="noprint"><button class="btn ghost" style="font-size:.8rem;padding:.3em .7em" onclick="resetOne('${escapeHtml(s.name).replace(/'/g,"\\'")}')">♻️</button></td></tr>`;
   }).join("");
   const heads=STAGES.map(st=>`<th title="${st.title}">${st.emoji}</th>`).join("");
   body.innerHTML=`<div style="overflow-x:auto"><table>
-    <thead><tr><th>Prénom</th><th>Méd.</th><th>Total</th>${heads}<th>Activité</th><th class="noprint"></th></tr></thead>
+    <thead><tr><th>Prénom</th><th>Méd.</th><th>Total</th>${heads}<th title="AquaRun — meilleur score">🎮</th><th>Activité</th><th class="noprint"></th></tr></thead>
     <tbody>${rows}</tbody></table></div>
-    <p style="color:#888;font-size:.85rem;margin-top:10px">Les barres montrent le meilleur score par jeu. Vert = réussi à 100% (verrouillé).</p>`;
+    <p style="color:#888;font-size:.85rem;margin-top:10px">Les barres montrent le meilleur score par jeu. Vert = réussi à 100% (verrouillé). La colonne 🎮 = meilleur score AquaRun (🏭 = Stage 2 atteint).</p>`;
 }
 function resetOne(name){ if(confirm("Réinitialiser la progression de "+name+" ?")){Sync.reset(name);showToast("Réinitialisé","good");renderTeacher();} }
 function timeAgo(ts){ if(!ts)return"—"; const s=Math.floor((Date.now()-ts)/1000); if(s<60)return"à l'instant"; if(s<3600)return Math.floor(s/60)+" min"; if(s<86400)return Math.floor(s/3600)+" h"; return Math.floor(s/86400)+" j"; }
 function exportCSV(){
-  const head=["Prénom","Médailles","Total %",...STAGES.map(s=>s.title+" %"),"Dernière activité"];
+  const head=["Prénom","Médailles","Total %",...STAGES.map(s=>s.title+" %"),"AquaRun (score)","AquaRun Stage 2","Dernière activité"];
   const lines=[head.join(";")];
-  _lastList.forEach(s=>{const row=[s.name,(s.badges||[]).length,totalPct(s),...STAGES.map(st=>s.stages?.[st.id]?.best||0),new Date(s.lastActive||Date.now()).toLocaleString("fr-FR")];lines.push(row.join(";"));});
+  _lastList.forEach(s=>{const row=[s.name,(s.badges||[]).length,totalPct(s),...STAGES.map(st=>s.stages?.[st.id]?.best||0),(s.aqua&&s.aqua.best)||0,(s.aqua&&s.aqua.stage2)?"oui":"non",new Date(s.lastActive||Date.now()).toLocaleString("fr-FR")];lines.push(row.join(";"));});
   download("eau_progression.csv",lines.join("\n"),"text/csv");
 }
 function exportJSON(){ download("eau_progression.json",JSON.stringify(_lastList,null,2),"application/json"); }
@@ -1604,7 +1622,7 @@ function shuffle(a){for(let i=a.length-1;i>0;i--){const j=Math.floor(Math.random
 /* ============================================================
    DÉMARRAGE
    ============================================================ */
-(async function(){ await Sync.init(); renderWelcome(); })();
+(async function(){ await Sync.init(); flushAquaPending(); renderWelcome(); })();
 </script>
 </body>
 </html>
